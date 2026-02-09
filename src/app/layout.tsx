@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from "next/font/google";
 import { ConvexClientProvider } from "@/lib/convex";
@@ -17,9 +18,59 @@ const plexCondensed = IBM_Plex_Sans_Condensed({
 	variable: "--font-plex-condensed",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+	? process.env.NEXT_PUBLIC_SITE_URL
+	: process.env.NEXT_PUBLIC_VERCEL_URL
+		? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+		: "https://openclaw-personal-usage-dashboard.vercel.app";
+
 export const metadata: Metadata = {
-	title: "OpenClaw Observatory",
-	description: "LLM usage analytics dashboard",
+	metadataBase: new URL(siteUrl),
+	title: {
+		default: "OpenClaw Observatory",
+		template: "%s | OpenClaw Observatory",
+	},
+	description:
+		"Personal OpenClaw usage analytics dashboard for cost, token, model, and session intelligence.",
+	keywords: [
+		"OpenClaw",
+		"LLM analytics",
+		"usage dashboard",
+		"token tracking",
+		"AI cost dashboard",
+		"Convex",
+	],
+	alternates: {
+		canonical: "/",
+	},
+	openGraph: {
+		title: "OpenClaw Observatory",
+		description:
+			"Track model usage, costs, tokens, cache performance, and session activity in one dashboard.",
+		url: "/",
+		siteName: "OpenClaw Observatory",
+		locale: "en_US",
+		type: "website",
+		images: [
+			{
+				url: "/icon.svg",
+				width: 512,
+				height: 512,
+				alt: "OpenClaw Observatory",
+			},
+		],
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "OpenClaw Observatory",
+		description:
+			"Track model usage, costs, tokens, cache performance, and sessions.",
+		images: ["/icon.svg"],
+	},
+	icons: {
+		icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+		apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+	},
 };
 
 export default function RootLayout({
@@ -33,6 +84,7 @@ export default function RootLayout({
 				className={`${plexSans.variable} ${plexCondensed.variable} antialiased`}
 			>
 				<ConvexClientProvider>{children}</ConvexClientProvider>
+				<Analytics />
 			</body>
 		</html>
 	);
