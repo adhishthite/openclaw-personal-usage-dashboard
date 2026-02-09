@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
+import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -8,7 +8,8 @@ const buttonVariants = cva(
 		variants: {
 			variant: {
 				default: "bg-primary text-primary-foreground hover:bg-primary/90",
-				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/90",
+				secondary:
+					"bg-secondary text-secondary-foreground hover:bg-secondary/90",
 				outline: "border border-input bg-background hover:bg-accent",
 				ghost: "hover:bg-accent hover:text-accent-foreground",
 			},
@@ -31,8 +32,7 @@ function Button({
 	variant,
 	size,
 	...props
-}: React.ComponentProps<"button"> &
-	VariantProps<typeof buttonVariants>) {
+}: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants>) {
 	return (
 		<button
 			className={cn(buttonVariants({ variant, size, className }))}

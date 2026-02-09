@@ -60,5 +60,5 @@ export function maskName(name: string): string {
 
 export function maskSessionId(sessionId: string): string {
 	if (sessionId.length <= 5) return sessionId;
-	return sessionId.slice(0, 3) + "***" + sessionId.slice(-2);
+	return `${sessionId.slice(0, 3)}***${sessionId.slice(-2)}`;
 }

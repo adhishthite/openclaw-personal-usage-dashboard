@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Manrope, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from "next/font/google";
 import { ConvexClientProvider } from "@/lib/convex";
 import "./globals.css";
 
-const manrope = Manrope({
+const plexSans = IBM_Plex_Sans({
 	subsets: ["latin"],
 	display: "swap",
-	variable: "--font-manrope",
+	weight: ["400", "500", "600", "700"],
+	variable: "--font-plex-sans",
 });
 
-const spaceGrotesk = Space_Grotesk({
+const plexCondensed = IBM_Plex_Sans_Condensed({
 	subsets: ["latin"],
 	display: "swap",
-	variable: "--font-space-grotesk",
+	weight: ["500", "600", "700"],
+	variable: "--font-plex-condensed",
 });
 
 export const metadata: Metadata = {
@@ -27,7 +29,9 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en">
-			<body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
+			<body
+				className={`${plexSans.variable} ${plexCondensed.variable} antialiased`}
+			>
 				<ConvexClientProvider>{children}</ConvexClientProvider>
 			</body>
 		</html>

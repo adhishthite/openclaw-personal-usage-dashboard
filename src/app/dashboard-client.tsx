@@ -4,15 +4,18 @@ import { useQuery } from "convex/react";
 import {
 	Activity,
 	Bot,
-	CalendarDays,
 	CircleDollarSign,
 	Cpu,
 	Database,
+	Gauge,
 	MessageSquare,
+	MoonStar,
 	Rocket,
 	ShieldCheck,
-	Sparkles,
+	Sun,
+	TrendingUp,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	Area,
 	AreaChart,
@@ -27,9 +30,15 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,14 +58,37 @@ import {
 	formatShortDate,
 	formatTokens,
 } from "@/lib/formatters";
+import { api } from "../../convex/_generated/api";
 
-const NO_RANGE = {};
-const COLORS = ["#0ea5e9", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444", "#64748b"];
-const CURRENCY = new Intl.NumberFormat("en-US", {
+type RangeKey = "7d" | "30d" | "90d" | "all";
+
+const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; days?: number }> = [
+	{ key: "7d", label: "7D", days: 7 },
+	{ key: "30d", label: "30D", days: 30 },
+	{ key: "90d", label: "90D", days: 90 },
+	{ key: "all", label: "All Time" },
+];
+
+const MODEL_COLORS = [
+	"#0ea5e9",
+	"#14b8a6",
+	"#84cc16",
+	"#f59e0b",
+	"#f97316",
+	"#ef4444",
+];
+
+const PRECISE_CURRENCY = new Intl.NumberFormat("en-US", {
 	style: "currency",
 	currency: "USD",
 	maximumFractionDigits: 4,
 });
+
+function isoDate(daysAgo = 0) {
+	const date = new Date();
+	date.setDate(date.getDate() - daysAgo);
+	return date.toISOString().slice(0, 10);
+}
 
 function MetricCard({
 	label,
@@ -70,10 +102,12 @@ function MetricCard({
 	icon: React.ComponentType<{ className?: string }>;
 }) {
 	return (
-		<Card className="gap-3 py-4">
+		<Card className="metric-card gap-3 py-4">
 			<CardHeader className="px-4 pb-0">
 				<div className="text-muted-foreground flex items-center justify-between">
-					<p className="text-xs uppercase tracking-wide">{label}</p>
+					<p className="text-[11px] font-medium tracking-[0.12em] uppercase">
+						{label}
+					</p>
 					<Icon className="h-4 w-4" />
 				</div>
 			</CardHeader>
@@ -85,21 +119,32 @@ function MetricCard({
 	);
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
+function EmptyState({
+	title,
+	description,
+}: {
+	title: string;
+	description: string;
+}) {
 	return (
-		<div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-			<p className="font-medium">{title}</p>
-			<p className="text-muted-foreground mt-1 max-w-sm text-sm">{description}</p>
+		<div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+			<p className="font-semibold">{title}</p>
+			<p className="text-muted-foreground mt-1 max-w-sm text-sm">
+				{description}
+			</p>
 		</div>
 	);
 }
 
 function DashboardSkeleton() {
+	const skeletonIds = ["a", "b", "c", "d", "e"] as const;
+
 	return (
-		<div className="space-y-5">
+		<div className="space-y-6">
+			<Skeleton className="h-40 rounded-2xl" />
 			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-				{Array.from({ length: 5 }).map((_, idx) => (
-					<Skeleton key={`metric-${idx}`} className="h-28 rounded-xl" />
+				{skeletonIds.map((id) => (
+					<Skeleton key={`metric-${id}`} className="h-28 rounded-xl" />
 				))}
 			</div>
 			<div className="grid gap-4 xl:grid-cols-3">
@@ -112,16 +157,61 @@ function DashboardSkeleton() {
 }
 
 export function DashboardClient() {
-	const overview = useQuery(api.queries.overview.getOverviewStats, NO_RANGE);
+	const [range, setRange] = useState<RangeKey>("30d");
+	const [theme, setTheme] = useState<"light" | "dark">("light");
+
+	useEffect(() => {
+		const stored =
+			typeof window !== "undefined"
+				? window.localStorage.getItem("openclaw-theme")
+				: null;
+		const systemPrefersDark =
+			typeof window !== "undefined" &&
+			window.matchMedia("(prefers-color-scheme: dark)").matches;
+		const initialTheme =
+			stored === "dark" || stored === "light"
+				? stored
+				: systemPrefersDark
+					? "dark"
+					: "light";
+
+		setTheme(initialTheme);
+		document.documentElement.classList.toggle("dark", initialTheme === "dark");
+	}, []);
+
+	useEffect(() => {
+		document.documentElement.classList.toggle("dark", theme === "dark");
+		window.localStorage.setItem("openclaw-theme", theme);
+	}, [theme]);
+
+	const rangeArgs = useMemo(() => {
+		const option = RANGE_OPTIONS.find((item) => item.key === range);
+		if (!option || option.days === undefined) return {};
+		return {
+			startDate: isoDate(option.days - 1),
+			endDate: isoDate(0),
+		};
+	}, [range]);
+
+	const overview = useQuery(api.queries.overview.getOverviewStats, rangeArgs);
 	const sessions = useQuery(api.queries.sessions.getRecentSessions, {
-		limit: 8,
+		limit: 10,
 	});
-	const dailyCosts = useQuery(api.queries.timeseries.getDailyCosts, NO_RANGE);
-	const tokenTimeseries = useQuery(api.queries.timeseries.getTokenTimeseries, NO_RANGE);
-	const messagesByDay = useQuery(api.queries.timeseries.getMessagesByDay, NO_RANGE);
-	const costByModel = useQuery(api.queries.models.getCostByModel, NO_RANGE);
-	const modelComparison = useQuery(api.queries.models.getModelComparison, NO_RANGE);
-	const cacheMetrics = useQuery(api.queries.models.getCacheMetrics, NO_RANGE);
+	const dailyCosts = useQuery(api.queries.timeseries.getDailyCosts, rangeArgs);
+	const tokenTimeseries = useQuery(
+		api.queries.timeseries.getTokenTimeseries,
+		rangeArgs,
+	);
+	const messagesByDay = useQuery(
+		api.queries.timeseries.getMessagesByDay,
+		rangeArgs,
+	);
+	const costByModel = useQuery(api.queries.models.getCostByModel, rangeArgs);
+	const modelComparison = useQuery(
+		api.queries.models.getModelComparison,
+		rangeArgs,
+	);
+	const cacheMetrics = useQuery(api.queries.models.getCacheMetrics, rangeArgs);
 
 	const isLoading =
 		overview === undefined ||
@@ -135,73 +225,93 @@ export function DashboardClient() {
 
 	if (isLoading) {
 		return (
-			<main className="relative min-h-screen overflow-hidden p-6 md:p-10">
-				<div className="from-primary/10 absolute inset-0 -z-20 bg-gradient-to-b via-cyan-500/5 to-transparent" />
-				<div className="from-primary/20 absolute -top-28 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-gradient-to-b blur-3xl" />
+			<main className="obs-shell min-h-screen p-6 md:p-10">
 				<div className="mx-auto max-w-7xl">
-					<div className="mb-6 space-y-2">
-						<Skeleton className="h-8 w-72 rounded-lg" />
-						<Skeleton className="h-4 w-96 rounded-lg" />
-					</div>
 					<DashboardSkeleton />
 				</div>
 			</main>
 		);
 	}
 
-	const cacheHitRate = overview.cacheHitRate * 100;
 	const avgCostPerMessage =
-		overview.totalMessages > 0 ? overview.totalCost / overview.totalMessages : 0;
+		overview.totalMessages > 0
+			? overview.totalCost / overview.totalMessages
+			: 0;
 	const avgTokensPerMessage =
-		overview.totalMessages > 0 ? overview.totalTokens / overview.totalMessages : 0;
+		overview.totalMessages > 0
+			? overview.totalTokens / overview.totalMessages
+			: 0;
 	const mostRecentDate = dailyCosts.at(-1)?.date;
+	const spendRunway = Math.max(
+		0,
+		Math.min(100, (overview.totalCost / 50) * 100),
+	);
 
 	return (
-		<main className="relative min-h-screen overflow-hidden p-6 md:p-10">
-			<div className="from-primary/10 absolute inset-0 -z-20 bg-gradient-to-b via-cyan-500/5 to-transparent" />
-			<div className="from-primary/20 absolute -top-28 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-gradient-to-b blur-3xl" />
+		<main className="obs-shell min-h-screen p-6 md:p-10">
 			<div className="mx-auto max-w-7xl">
-				<header className="mb-6">
-					<div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-						<div className="space-y-2">
-							<div className="flex items-center gap-2">
-								<Badge variant="outline">OpenClaw Analytics</Badge>
-								<Badge variant="success">
-									<Activity className="mr-1 h-3 w-3" />
-									Live via Convex
+				<header className="hero-shell mb-6 rounded-2xl border p-5 md:p-7">
+					<div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+						<div className="space-y-3">
+							<div className="flex flex-wrap items-center gap-2">
+								<Badge variant="outline" className="command-badge">
+									OpenClaw Command Deck
+								</Badge>
+								<Badge variant="outline" className="live-badge gap-1">
+									<Activity className="h-3 w-3" />
+									Realtime Convex Feed
 								</Badge>
 							</div>
-							<h1 className="text-4xl font-semibold tracking-tight">
-								Usage Observatory
+							<h1 className="font-heading text-4xl leading-none tracking-tight md:text-5xl">
+								Usage Flight Control
 							</h1>
-							<p className="text-muted-foreground max-w-2xl text-sm">
-								A unified cost, token, and session intelligence view powered by
-								your Convex contracts.
+							<p className="text-muted-foreground max-w-2xl text-sm md:text-base">
+								Professional spend and token intelligence across models,
+								sessions, and cache behavior.
 							</p>
 						</div>
-						<Card className="w-full py-4 lg:w-[380px]">
-							<CardContent className="space-y-3 px-4">
-								<div className="flex items-center justify-between text-sm">
-									<p className="text-muted-foreground">Last data point</p>
-									<p className="font-medium">
-										{mostRecentDate ? formatShortDate(mostRecentDate) : "N/A"}
-									</p>
+
+						<div className="w-full space-y-4 lg:w-auto">
+							<div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+								{RANGE_OPTIONS.map((option) => (
+									<Button
+										key={option.key}
+										size="sm"
+										variant={range === option.key ? "default" : "outline"}
+										className="rounded-full"
+										onClick={() => setRange(option.key)}
+									>
+										{option.label}
+									</Button>
+								))}
+								<Button
+									size="sm"
+									variant="outline"
+									className="rounded-full"
+									onClick={() =>
+										setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+									}
+								>
+									{theme === "dark" ? (
+										<Sun className="mr-1.5 h-3.5 w-3.5" />
+									) : (
+										<MoonStar className="mr-1.5 h-3.5 w-3.5" />
+									)}
+									{theme === "dark" ? "Light" : "Dark"}
+								</Button>
+							</div>
+							<div className="glass-strip rounded-xl border px-4 py-3">
+								<div className="mb-1 flex items-center justify-between text-xs">
+									<span className="text-muted-foreground">
+										Window spend pulse
+									</span>
+									<span className="font-semibold">
+										{formatPercent(spendRunway)}
+									</span>
 								</div>
-								<Separator />
-								<div className="grid grid-cols-2 gap-2 text-sm">
-									<div className="rounded-md border p-2">
-										<p className="text-muted-foreground text-xs">Cache Hit Rate</p>
-										<p className="font-semibold">{formatPercent(cacheHitRate)}</p>
-									</div>
-									<div className="rounded-md border p-2">
-										<p className="text-muted-foreground text-xs">Avg Tokens/Msg</p>
-										<p className="font-semibold">
-											{formatNumber(Math.round(avgTokensPerMessage))}
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+								<Progress value={spendRunway} />
+							</div>
+						</div>
 					</div>
 				</header>
 
@@ -209,19 +319,19 @@ export function DashboardClient() {
 					<MetricCard
 						label="Total Cost"
 						value={formatCurrency(overview.totalCost)}
-						description="Cumulative spend across all sessions"
+						description="Cumulative spend in current window"
 						icon={CircleDollarSign}
 					/>
 					<MetricCard
 						label="Total Tokens"
 						value={formatTokens(overview.totalTokens)}
-						description="Input + output + cache tokens"
+						description="Input + output + cache token volume"
 						icon={Database}
 					/>
 					<MetricCard
 						label="Messages"
 						value={formatNumber(overview.totalMessages)}
-						description="Total message count"
+						description="Assistant + user completion events"
 						icon={MessageSquare}
 					/>
 					<MetricCard
@@ -232,56 +342,72 @@ export function DashboardClient() {
 					/>
 					<MetricCard
 						label="Avg Cost / Message"
-						value={CURRENCY.format(avgCostPerMessage)}
-						description="Efficiency indicator"
+						value={PRECISE_CURRENCY.format(avgCostPerMessage)}
+						description={`~${formatNumber(Math.round(avgTokensPerMessage))} tokens per message`}
 						icon={Rocket}
 					/>
 				</section>
 
 				<section className="mt-5 grid gap-4 xl:grid-cols-3">
 					<Card className="xl:col-span-2">
-						<CardHeader className="pb-0">
+						<CardHeader className="pb-2">
 							<CardTitle className="flex items-center gap-2">
-								<CalendarDays className="h-4 w-4" />
-								Daily Cost Trend
+								<TrendingUp className="h-4 w-4" />
+								Daily Cost Acceleration
 							</CardTitle>
 							<CardDescription>
-								Day-over-day spend progression from `dailyStats`
+								Spend velocity by day with the active range filter
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80 pt-4">
+						<CardContent className="h-80 pt-2">
 							{dailyCosts.length === 0 ? (
 								<EmptyState
-									title="No cost data yet"
-									description="Run your ingestion job to populate daily cost metrics."
+									title="No cost timeline yet"
+									description="Ingest usage data to populate daily spend charts."
 								/>
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
 									<AreaChart data={dailyCosts}>
 										<defs>
-											<linearGradient id="costFill" x1="0" y1="0" x2="0" y2="1">
-												<stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.4} />
-												<stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.04} />
+											<linearGradient
+												id="costGradient"
+												x1="0"
+												y1="0"
+												x2="0"
+												y2="1"
+											>
+												<stop
+													offset="0%"
+													stopColor="#0ea5e9"
+													stopOpacity={0.45}
+												/>
+												<stop
+													offset="100%"
+													stopColor="#0ea5e9"
+													stopOpacity={0.03}
+												/>
 											</linearGradient>
 										</defs>
-										<CartesianGrid strokeDasharray="3 3" vertical={false} />
+										<CartesianGrid strokeDasharray="4 4" vertical={false} />
 										<XAxis
 											dataKey="date"
 											tickFormatter={formatShortDate}
 											tickLine={false}
 											axisLine={false}
 										/>
-										<YAxis tickLine={false} axisLine={false} width={70} />
+										<YAxis tickLine={false} axisLine={false} width={74} />
 										<Tooltip
-											formatter={(value) => CURRENCY.format(Number(value ?? 0))}
+											formatter={(value) =>
+												PRECISE_CURRENCY.format(Number(value ?? 0))
+											}
 											labelFormatter={(label) => formatShortDate(String(label))}
 										/>
 										<Area
 											type="monotone"
 											dataKey="Cost"
-											stroke="#0ea5e9"
-											fill="url(#costFill)"
-											strokeWidth={2}
+											stroke="#0284c7"
+											fill="url(#costGradient)"
+											strokeWidth={2.2}
 										/>
 									</AreaChart>
 								</ResponsiveContainer>
@@ -290,20 +416,17 @@ export function DashboardClient() {
 					</Card>
 
 					<Card>
-						<CardHeader className="pb-0">
-							<CardTitle className="flex items-center gap-2">
-								<Sparkles className="h-4 w-4" />
-								Cost by Model
-							</CardTitle>
+						<CardHeader className="pb-2">
+							<CardTitle>Model Spend Distribution</CardTitle>
 							<CardDescription>
-								Distribution across model families
+								Which model families dominate spend
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80 pt-4">
+						<CardContent className="h-80 pt-2">
 							{costByModel.length === 0 ? (
 								<EmptyState
-									title="No model cost data"
-									description="Costs by model will appear after ingestion."
+									title="No model split yet"
+									description="Model cost allocation appears after ingestion."
 								/>
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
@@ -312,19 +435,21 @@ export function DashboardClient() {
 											data={costByModel}
 											dataKey="value"
 											nameKey="name"
-											innerRadius={58}
-											outerRadius={92}
-											paddingAngle={3}
+											innerRadius={60}
+											outerRadius={96}
+											paddingAngle={2}
 										>
 											{costByModel.map((entry, index) => (
 												<Cell
 													key={`${entry.name}-${index}`}
-													fill={COLORS[index % COLORS.length]}
+													fill={MODEL_COLORS[index % MODEL_COLORS.length]}
 												/>
 											))}
 										</Pie>
 										<Tooltip
-											formatter={(value) => CURRENCY.format(Number(value ?? 0))}
+											formatter={(value) =>
+												PRECISE_CURRENCY.format(Number(value ?? 0))
+											}
 										/>
 									</PieChart>
 								</ResponsiveContainer>
@@ -335,40 +460,52 @@ export function DashboardClient() {
 
 				<section className="mt-4 grid gap-4 xl:grid-cols-3">
 					<Card className="xl:col-span-2">
-						<CardHeader className="pb-0">
+						<CardHeader className="pb-2">
 							<CardTitle className="flex items-center gap-2">
 								<Database className="h-4 w-4" />
-								Token Throughput
+								Token Throughput Matrix
 							</CardTitle>
 							<CardDescription>
-								Input, output, and cache token movement per day
+								Input, output, and cache token dynamics per day
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80 pt-4">
+						<CardContent className="h-80 pt-2">
 							{tokenTimeseries.length === 0 ? (
 								<EmptyState
-									title="No token data"
-									description="Token throughput chart will render once data arrives."
+									title="No token throughput yet"
+									description="Token bars will render as soon as timeseries data exists."
 								/>
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={tokenTimeseries.slice(-21)}>
-										<CartesianGrid strokeDasharray="3 3" vertical={false} />
+									<BarChart data={tokenTimeseries.slice(-24)}>
+										<CartesianGrid strokeDasharray="4 4" vertical={false} />
 										<XAxis
 											dataKey="date"
 											tickFormatter={formatShortDate}
 											tickLine={false}
 											axisLine={false}
 										/>
-										<YAxis tickLine={false} axisLine={false} width={80} />
+										<YAxis tickLine={false} axisLine={false} width={86} />
 										<Tooltip
 											formatter={(value) => formatTokens(Number(value ?? 0))}
 											labelFormatter={(label) => formatShortDate(String(label))}
 										/>
-										<Bar dataKey="Input Tokens" stackId="tokens" fill="#22c55e" />
-										<Bar dataKey="Output Tokens" stackId="tokens" fill="#0ea5e9" />
-										<Bar dataKey="Cache Read" stackId="tokens" fill="#f59e0b" />
-										<Bar dataKey="Cache Write" stackId="tokens" fill="#8b5cf6" />
+										<Bar
+											dataKey="Input Tokens"
+											stackId="tokens"
+											fill="#14b8a6"
+										/>
+										<Bar
+											dataKey="Output Tokens"
+											stackId="tokens"
+											fill="#0ea5e9"
+										/>
+										<Bar dataKey="Cache Read" stackId="tokens" fill="#84cc16" />
+										<Bar
+											dataKey="Cache Write"
+											stackId="tokens"
+											fill="#f59e0b"
+										/>
 									</BarChart>
 								</ResponsiveContainer>
 							)}
@@ -379,45 +516,50 @@ export function DashboardClient() {
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<ShieldCheck className="h-4 w-4" />
-								Cache Performance
+								Cache Reliability
 							</CardTitle>
 							<CardDescription>
-								Hit rate and cache volume split by model
+								Hit rate profile and high-impact models
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="space-y-1.5">
 								<div className="flex items-center justify-between text-sm">
-									<p>Overall hit rate</p>
-									<p className="font-semibold">{formatPercent(cacheMetrics.hitRate)}</p>
+									<p className="flex items-center gap-1">
+										<Gauge className="h-3.5 w-3.5" />
+										Overall hit rate
+									</p>
+									<p className="font-semibold">
+										{formatPercent(cacheMetrics.hitRate)}
+									</p>
 								</div>
 								<Progress value={cacheMetrics.hitRate} />
 							</div>
 							<div className="grid grid-cols-2 gap-2 text-sm">
-								<div className="rounded-md border p-2">
-									<p className="text-muted-foreground text-xs">Cache Read</p>
-									<p className="font-semibold">
+								<div className="cache-stat-card rounded-lg border p-3">
+									<p className="cache-stat-label text-xs">Cache Read</p>
+									<p className="cache-stat-value font-semibold">
 										{formatTokens(cacheMetrics.totalCacheRead)}
 									</p>
 								</div>
-								<div className="rounded-md border p-2">
-									<p className="text-muted-foreground text-xs">Cache Write</p>
-									<p className="font-semibold">
+								<div className="cache-stat-card rounded-lg border p-3">
+									<p className="cache-stat-label text-xs">Cache Write</p>
+									<p className="cache-stat-value font-semibold">
 										{formatTokens(cacheMetrics.totalCacheWrite)}
 									</p>
 								</div>
 							</div>
 							<Separator />
 							<div className="space-y-2">
-								<p className="text-muted-foreground text-xs uppercase tracking-wide">
-									Top cache models
+								<p className="text-muted-foreground text-[11px] tracking-[0.12em] uppercase">
+									Top cache-intensive models
 								</p>
 								{cacheMetrics.byModel.slice(0, 4).map((item) => (
 									<div
 										key={item.name}
-										className="flex items-center justify-between text-sm"
+										className="flex items-center justify-between gap-2 text-sm"
 									>
-										<p className="truncate pr-2">{item.name}</p>
+										<p className="truncate">{item.name}</p>
 										<p className="text-muted-foreground">
 											{formatTokens(item["Cache Read"] + item["Cache Write"])}
 										</p>
@@ -433,14 +575,14 @@ export function DashboardClient() {
 						<CardHeader>
 							<CardTitle>Model Comparison</CardTitle>
 							<CardDescription>
-								Cost and message-level efficiency across models
+								Efficiency and economics per model in this range
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							{modelComparison.length === 0 ? (
 								<EmptyState
-									title="No model comparison data"
-									description="Once data is available, this table will compare model efficiency."
+									title="No model metrics yet"
+									description="Run ingest and pick a larger range if this period is empty."
 								/>
 							) : (
 								<Table>
@@ -448,22 +590,27 @@ export function DashboardClient() {
 										<TableRow>
 											<TableHead>Model</TableHead>
 											<TableHead className="text-right">Total Cost</TableHead>
-											<TableHead className="text-right">Avg / Message</TableHead>
+											<TableHead className="text-right">
+												Avg / Message
+											</TableHead>
 											<TableHead className="text-right">Tokens</TableHead>
 											<TableHead className="text-right">Messages</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{modelComparison.slice(0, 8).map((row) => (
+										{modelComparison.slice(0, 10).map((row, index) => (
 											<TableRow key={row.model}>
-												<TableCell className="max-w-[220px] truncate font-medium">
+												<TableCell className="max-w-[240px] truncate font-medium">
+													<span className="mr-2 rounded-full border px-2 py-0.5 text-[10px]">
+														#{index + 1}
+													</span>
 													{row.model}
 												</TableCell>
 												<TableCell className="text-right">
-													{CURRENCY.format(row["Total Cost"])}
+													{PRECISE_CURRENCY.format(row["Total Cost"])}
 												</TableCell>
 												<TableCell className="text-right">
-													{CURRENCY.format(row["Avg Cost/Message"])}
+													{PRECISE_CURRENCY.format(row["Avg Cost/Message"])}
 												</TableCell>
 												<TableCell className="text-right">
 													{formatTokens(row["Total Tokens"])}
@@ -482,18 +629,38 @@ export function DashboardClient() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Daily Message Velocity</CardTitle>
-							<CardDescription>Messages trend over time</CardDescription>
+							<CardDescription>Conversation traffic over time</CardDescription>
 						</CardHeader>
 						<CardContent className="h-80">
 							{messagesByDay.length === 0 ? (
 								<EmptyState
-									title="No message trend data"
-									description="Message velocity will appear once daily activity is ingested."
+									title="No message trend yet"
+									description="Messages timeline appears when daily activity is available."
 								/>
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
 									<AreaChart data={messagesByDay.slice(-30)}>
-										<CartesianGrid strokeDasharray="3 3" vertical={false} />
+										<defs>
+											<linearGradient
+												id="messageGradient"
+												x1="0"
+												y1="0"
+												x2="0"
+												y2="1"
+											>
+												<stop
+													offset="0%"
+													stopColor="#14b8a6"
+													stopOpacity={0.45}
+												/>
+												<stop
+													offset="100%"
+													stopColor="#14b8a6"
+													stopOpacity={0.06}
+												/>
+											</linearGradient>
+										</defs>
+										<CartesianGrid strokeDasharray="4 4" vertical={false} />
 										<XAxis
 											dataKey="date"
 											tickFormatter={formatShortDate}
@@ -508,9 +675,8 @@ export function DashboardClient() {
 										<Area
 											type="monotone"
 											dataKey="Messages"
-											stroke="#8b5cf6"
-											fill="#8b5cf6"
-											fillOpacity={0.18}
+											stroke="#0f766e"
+											fill="url(#messageGradient)"
 											strokeWidth={2}
 										/>
 									</AreaChart>
@@ -528,14 +694,14 @@ export function DashboardClient() {
 								Recent Sessions
 							</CardTitle>
 							<CardDescription>
-								Latest active sessions from completion logs
+								Latest session activity across your command stream
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							{sessions.length === 0 ? (
 								<EmptyState
 									title="No sessions yet"
-									description="Run `bun run ingest` and refresh this page to inspect recent sessions."
+									description="Run `bun run ingest` and refresh to view recent sessions."
 								/>
 							) : (
 								<Table>
@@ -553,11 +719,11 @@ export function DashboardClient() {
 									<TableBody>
 										{sessions.map((session) => (
 											<TableRow key={session.sessionId}>
-												<TableCell className="max-w-[140px] truncate font-mono text-xs">
+												<TableCell className="max-w-[150px] truncate font-mono text-xs">
 													{session.sessionId}
 												</TableCell>
 												<TableCell>{session.agent}</TableCell>
-												<TableCell className="max-w-[240px] truncate">
+												<TableCell className="max-w-[250px] truncate">
 													{session.model}
 												</TableCell>
 												<TableCell className="text-right">
@@ -567,7 +733,7 @@ export function DashboardClient() {
 													{formatTokens(session.totalTokens)}
 												</TableCell>
 												<TableCell className="text-right">
-													{CURRENCY.format(session.totalCost)}
+													{PRECISE_CURRENCY.format(session.totalCost)}
 												</TableCell>
 												<TableCell className="text-right text-xs">
 													{formatDate(session.lastTimestamp)}
@@ -580,6 +746,15 @@ export function DashboardClient() {
 						</CardContent>
 					</Card>
 				</section>
+
+				<footer className="mt-6 flex items-center justify-between px-1 pb-1 text-xs">
+					<p className="text-muted-foreground">
+						Latest data: {mostRecentDate ?? "N/A"}
+					</p>
+					<p className="text-muted-foreground">
+						Range: {RANGE_OPTIONS.find((option) => option.key === range)?.label}
+					</p>
+				</footer>
 			</div>
 		</main>
 	);
