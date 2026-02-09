@@ -8,12 +8,13 @@ export const getTokenTimeseries = query({
 	},
 	handler: async (ctx, args) => {
 		let stats = await ctx.db.query("dailyStats").withIndex("by_date").collect();
+		const { startDate, endDate } = args;
 
-		if (args.startDate) {
-			stats = stats.filter((s) => s.date >= args.startDate!);
+		if (startDate) {
+			stats = stats.filter((s) => s.date >= startDate);
 		}
-		if (args.endDate) {
-			stats = stats.filter((s) => s.date <= args.endDate!);
+		if (endDate) {
+			stats = stats.filter((s) => s.date <= endDate);
 		}
 
 		const grouped = new Map<
@@ -54,12 +55,13 @@ export const getDailyCosts = query({
 	},
 	handler: async (ctx, args) => {
 		let stats = await ctx.db.query("dailyStats").withIndex("by_date").collect();
+		const { startDate, endDate } = args;
 
-		if (args.startDate) {
-			stats = stats.filter((s) => s.date >= args.startDate!);
+		if (startDate) {
+			stats = stats.filter((s) => s.date >= startDate);
 		}
-		if (args.endDate) {
-			stats = stats.filter((s) => s.date <= args.endDate!);
+		if (endDate) {
+			stats = stats.filter((s) => s.date <= endDate);
 		}
 
 		const grouped = new Map<string, number>();
@@ -85,12 +87,13 @@ export const getMessagesByDay = query({
 	},
 	handler: async (ctx, args) => {
 		let stats = await ctx.db.query("dailyStats").withIndex("by_date").collect();
+		const { startDate, endDate } = args;
 
-		if (args.startDate) {
-			stats = stats.filter((s) => s.date >= args.startDate!);
+		if (startDate) {
+			stats = stats.filter((s) => s.date >= startDate);
 		}
-		if (args.endDate) {
-			stats = stats.filter((s) => s.date <= args.endDate!);
+		if (endDate) {
+			stats = stats.filter((s) => s.date <= endDate);
 		}
 
 		const grouped = new Map<string, number>();

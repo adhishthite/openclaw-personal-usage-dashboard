@@ -5,6 +5,7 @@ import {
 	Activity,
 	Bot,
 	CircleDollarSign,
+	CircleHelp,
 	Cpu,
 	Database,
 	Gauge,
@@ -57,6 +58,7 @@ import {
 	formatPercent,
 	formatShortDate,
 	formatTokens,
+	maskName,
 } from "@/lib/formatters";
 import { api } from "../../convex/_generated/api";
 
@@ -78,10 +80,11 @@ const MODEL_COLORS = [
 	"#ef4444",
 ];
 
-const PRECISE_CURRENCY = new Intl.NumberFormat("en-US", {
+const CURRENCY = new Intl.NumberFormat("en-US", {
 	style: "currency",
 	currency: "USD",
-	maximumFractionDigits: 4,
+	minimumFractionDigits: 2,
+	maximumFractionDigits: 2,
 });
 
 function isoDate(daysAgo = 0) {
@@ -94,11 +97,13 @@ function MetricCard({
 	label,
 	value,
 	description,
+	hint,
 	icon: Icon,
 }: {
 	label: string;
 	value: string;
 	description: string;
+	hint: string;
 	icon: React.ComponentType<{ className?: string }>;
 }) {
 	return (
@@ -108,7 +113,10 @@ function MetricCard({
 					<p className="text-[11px] font-medium tracking-[0.12em] uppercase">
 						{label}
 					</p>
-					<Icon className="h-4 w-4" />
+					<div className="flex items-center gap-1.5">
+						<InfoHint content={hint} />
+						<Icon className="h-4 w-4" />
+					</div>
 				</div>
 			</CardHeader>
 			<CardContent className="space-y-1 px-4 pt-0">
@@ -116,6 +124,23 @@ function MetricCard({
 				<p className="text-muted-foreground text-xs">{description}</p>
 			</CardContent>
 		</Card>
+	);
+}
+
+function InfoHint({ content }: { content: string }) {
+	return (
+		<div className="group/info relative inline-flex">
+			<button
+				type="button"
+				aria-label="More information"
+				className="text-muted-foreground hover:text-foreground inline-flex h-5 w-5 items-center justify-center rounded-full transition-colors"
+			>
+				<CircleHelp className="h-3.5 w-3.5" />
+			</button>
+			<div className="pointer-events-none absolute top-6 right-0 z-30 w-56 translate-y-1 rounded-md border bg-popover p-2 text-xs text-popover-foreground opacity-0 shadow-md transition-all group-hover/info:translate-y-0 group-hover/info:opacity-100 group-focus-within/info:translate-y-0 group-focus-within/info:opacity-100">
+				{content}
+			</div>
+		</div>
 	);
 }
 
@@ -142,7 +167,7 @@ function DashboardSkeleton() {
 	return (
 		<div className="space-y-6">
 			<Skeleton className="h-40 rounded-2xl" />
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
 				{skeletonIds.map((id) => (
 					<Skeleton key={`metric-${id}`} className="h-28 rounded-xl" />
 				))}
@@ -225,7 +250,7 @@ export function DashboardClient() {
 
 	if (isLoading) {
 		return (
-			<main className="obs-shell min-h-screen p-6 md:p-10">
+			<main className="obs-shell min-h-screen p-4 sm:p-6 md:p-10">
 				<div className="mx-auto max-w-7xl">
 					<DashboardSkeleton />
 				</div>
@@ -246,11 +271,25 @@ export function DashboardClient() {
 		0,
 		Math.min(100, (overview.totalCost / 50) * 100),
 	);
+	const latestSessionAt = sessions[0]?.lastTimestamp
+		? new Date(sessions[0].lastTimestamp)
+		: null;
+	const minutesSinceLastSync = latestSessionAt
+		? Math.max(0, Math.floor((Date.now() - latestSessionAt.getTime()) / 60_000))
+		: null;
+	const syncHealth =
+		minutesSinceLastSync === null
+			? "unknown"
+			: minutesSinceLastSync <= 70
+				? "healthy"
+				: minutesSinceLastSync <= 180
+					? "delayed"
+					: "stale";
 
 	return (
-		<main className="obs-shell min-h-screen p-6 md:p-10">
+		<main className="obs-shell min-h-screen p-4 sm:p-6 md:p-10">
 			<div className="mx-auto max-w-7xl">
-				<header className="hero-shell mb-6 rounded-2xl border p-5 md:p-7">
+				<header className="hero-shell mb-5 rounded-2xl border p-4 sm:p-5 md:mb-6 md:p-7">
 					<div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 						<div className="space-y-3">
 							<div className="flex flex-wrap items-center gap-2">
@@ -262,7 +301,7 @@ export function DashboardClient() {
 									Realtime Convex Feed
 								</Badge>
 							</div>
-							<h1 className="font-heading text-4xl leading-none tracking-tight md:text-5xl">
+							<h1 className="font-heading text-3xl leading-none tracking-tight sm:text-4xl md:text-5xl">
 								Usage Flight Control
 							</h1>
 							<p className="text-muted-foreground max-w-2xl text-sm md:text-base">
@@ -302,48 +341,81 @@ export function DashboardClient() {
 							</div>
 							<div className="glass-strip rounded-xl border px-4 py-3">
 								<div className="mb-1 flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">
-										Window spend pulse
-									</span>
+									<div className="text-muted-foreground flex items-center gap-1.5">
+										<span>Window spend pulse</span>
+										<InfoHint content="A quick spend intensity gauge for this selected date range. It compares current spend against a soft $50 reference target." />
+									</div>
 									<span className="font-semibold">
 										{formatPercent(spendRunway)}
 									</span>
 								</div>
 								<Progress value={spendRunway} />
 							</div>
+							<div className="rounded-xl border px-4 py-2.5 text-xs">
+								<div className="flex items-center justify-between">
+									<p className="text-muted-foreground">Sync Status</p>
+									<Badge
+										variant={
+											syncHealth === "healthy"
+												? "success"
+												: syncHealth === "delayed"
+													? "warning"
+													: "outline"
+										}
+									>
+										{syncHealth === "healthy"
+											? "Healthy"
+											: syncHealth === "delayed"
+												? "Delayed"
+												: syncHealth === "stale"
+													? "Stale"
+													: "Unknown"}
+									</Badge>
+								</div>
+								<p className="text-muted-foreground mt-1">
+									{latestSessionAt
+										? `Last sync data at ${formatDate(latestSessionAt.toISOString())} (${minutesSinceLastSync}m ago).`
+										: "No recent session data yet."}
+								</p>
+							</div>
 						</div>
 					</div>
 				</header>
 
-				<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+				<section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
 					<MetricCard
 						label="Total Cost"
 						value={formatCurrency(overview.totalCost)}
 						description="Cumulative spend in current window"
+						hint="Total dollars spent during the active date range."
 						icon={CircleDollarSign}
 					/>
 					<MetricCard
 						label="Total Tokens"
 						value={formatTokens(overview.totalTokens)}
 						description="Input + output + cache token volume"
+						hint="Combined token volume including input, output, and cache token counts."
 						icon={Database}
 					/>
 					<MetricCard
 						label="Messages"
 						value={formatNumber(overview.totalMessages)}
 						description="Assistant + user completion events"
+						hint="Number of completion/message events recorded in this range."
 						icon={MessageSquare}
 					/>
 					<MetricCard
 						label="Models Used"
 						value={formatNumber(overview.modelsUsed)}
 						description={`Across ${formatNumber(overview.sessionCount)} sessions`}
+						hint="How many distinct models appeared in the selected period."
 						icon={Cpu}
 					/>
 					<MetricCard
 						label="Avg Cost / Message"
-						value={PRECISE_CURRENCY.format(avgCostPerMessage)}
+						value={CURRENCY.format(avgCostPerMessage)}
 						description={`~${formatNumber(Math.round(avgTokensPerMessage))} tokens per message`}
+						hint="Average spend per message, useful for tracking efficiency changes."
 						icon={Rocket}
 					/>
 				</section>
@@ -359,7 +431,7 @@ export function DashboardClient() {
 								Spend velocity by day with the active range filter
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80 pt-2">
+						<CardContent className="h-[280px] pt-2 md:h-80">
 							{dailyCosts.length === 0 ? (
 								<EmptyState
 									title="No cost timeline yet"
@@ -397,9 +469,7 @@ export function DashboardClient() {
 										/>
 										<YAxis tickLine={false} axisLine={false} width={74} />
 										<Tooltip
-											formatter={(value) =>
-												PRECISE_CURRENCY.format(Number(value ?? 0))
-											}
+											formatter={(value) => CURRENCY.format(Number(value ?? 0))}
 											labelFormatter={(label) => formatShortDate(String(label))}
 										/>
 										<Area
@@ -422,7 +492,7 @@ export function DashboardClient() {
 								Which model families dominate spend
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80 pt-2">
+						<CardContent className="h-[280px] pt-2 md:h-80">
 							{costByModel.length === 0 ? (
 								<EmptyState
 									title="No model split yet"
@@ -447,9 +517,7 @@ export function DashboardClient() {
 											))}
 										</Pie>
 										<Tooltip
-											formatter={(value) =>
-												PRECISE_CURRENCY.format(Number(value ?? 0))
-											}
+											formatter={(value) => CURRENCY.format(Number(value ?? 0))}
 										/>
 									</PieChart>
 								</ResponsiveContainer>
@@ -469,7 +537,7 @@ export function DashboardClient() {
 								Input, output, and cache token dynamics per day
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80 pt-2">
+						<CardContent className="h-[280px] pt-2 md:h-80">
 							{tokenTimeseries.length === 0 ? (
 								<EmptyState
 									title="No token throughput yet"
@@ -535,7 +603,7 @@ export function DashboardClient() {
 								</div>
 								<Progress value={cacheMetrics.hitRate} />
 							</div>
-							<div className="grid grid-cols-2 gap-2 text-sm">
+							<div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
 								<div className="cache-stat-card rounded-lg border p-3">
 									<p className="cache-stat-label text-xs">Cache Read</p>
 									<p className="cache-stat-value font-semibold">
@@ -585,43 +653,84 @@ export function DashboardClient() {
 									description="Run ingest and pick a larger range if this period is empty."
 								/>
 							) : (
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Model</TableHead>
-											<TableHead className="text-right">Total Cost</TableHead>
-											<TableHead className="text-right">
-												Avg / Message
-											</TableHead>
-											<TableHead className="text-right">Tokens</TableHead>
-											<TableHead className="text-right">Messages</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
+								<>
+									<div className="space-y-2 md:hidden">
 										{modelComparison.slice(0, 10).map((row, index) => (
-											<TableRow key={row.model}>
-												<TableCell className="max-w-[240px] truncate font-medium">
-													<span className="mr-2 rounded-full border px-2 py-0.5 text-[10px]">
-														#{index + 1}
-													</span>
-													{row.model}
-												</TableCell>
-												<TableCell className="text-right">
-													{PRECISE_CURRENCY.format(row["Total Cost"])}
-												</TableCell>
-												<TableCell className="text-right">
-													{PRECISE_CURRENCY.format(row["Avg Cost/Message"])}
-												</TableCell>
-												<TableCell className="text-right">
-													{formatTokens(row["Total Tokens"])}
-												</TableCell>
-												<TableCell className="text-right">
-													{formatNumber(row.Messages)}
-												</TableCell>
-											</TableRow>
+											<div key={row.model} className="rounded-lg border p-3">
+												<p className="truncate text-sm font-medium">
+													#{index + 1} {row.model}
+												</p>
+												<div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+													<div>
+														<p className="text-muted-foreground">Total Cost</p>
+														<p className="font-semibold">
+															{CURRENCY.format(row["Total Cost"])}
+														</p>
+													</div>
+													<div>
+														<p className="text-muted-foreground">Avg / Msg</p>
+														<p className="font-semibold">
+															{CURRENCY.format(row["Avg Cost/Message"])}
+														</p>
+													</div>
+													<div>
+														<p className="text-muted-foreground">Tokens</p>
+														<p className="font-semibold">
+															{formatTokens(row["Total Tokens"])}
+														</p>
+													</div>
+													<div>
+														<p className="text-muted-foreground">Messages</p>
+														<p className="font-semibold">
+															{formatNumber(row.Messages)}
+														</p>
+													</div>
+												</div>
+											</div>
 										))}
-									</TableBody>
-								</Table>
+									</div>
+									<div className="hidden md:block">
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead>Model</TableHead>
+													<TableHead className="text-right">
+														Total Cost
+													</TableHead>
+													<TableHead className="text-right">
+														Avg / Message
+													</TableHead>
+													<TableHead className="text-right">Tokens</TableHead>
+													<TableHead className="text-right">Messages</TableHead>
+												</TableRow>
+											</TableHeader>
+											<TableBody>
+												{modelComparison.slice(0, 10).map((row, index) => (
+													<TableRow key={row.model}>
+														<TableCell className="max-w-[240px] truncate font-medium">
+															<span className="mr-2 rounded-full border px-2 py-0.5 text-[10px]">
+																#{index + 1}
+															</span>
+															{row.model}
+														</TableCell>
+														<TableCell className="text-right">
+															{CURRENCY.format(row["Total Cost"])}
+														</TableCell>
+														<TableCell className="text-right">
+															{CURRENCY.format(row["Avg Cost/Message"])}
+														</TableCell>
+														<TableCell className="text-right">
+															{formatTokens(row["Total Tokens"])}
+														</TableCell>
+														<TableCell className="text-right">
+															{formatNumber(row.Messages)}
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</div>
+								</>
 							)}
 						</CardContent>
 					</Card>
@@ -631,7 +740,7 @@ export function DashboardClient() {
 							<CardTitle>Daily Message Velocity</CardTitle>
 							<CardDescription>Conversation traffic over time</CardDescription>
 						</CardHeader>
-						<CardContent className="h-80">
+						<CardContent className="h-[280px] md:h-80">
 							{messagesByDay.length === 0 ? (
 								<EmptyState
 									title="No message trend yet"
@@ -704,50 +813,100 @@ export function DashboardClient() {
 									description="Run `bun run ingest` and refresh to view recent sessions."
 								/>
 							) : (
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Session</TableHead>
-											<TableHead>Agent</TableHead>
-											<TableHead>Model</TableHead>
-											<TableHead className="text-right">Messages</TableHead>
-											<TableHead className="text-right">Tokens</TableHead>
-											<TableHead className="text-right">Cost</TableHead>
-											<TableHead className="text-right">Last Active</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
+								<>
+									<div className="space-y-2 md:hidden">
 										{sessions.map((session) => (
-											<TableRow key={session.sessionId}>
-												<TableCell className="max-w-[150px] truncate font-mono text-xs">
+											<div
+												key={session.sessionId}
+												className="rounded-lg border p-3"
+											>
+												<p className="truncate font-mono text-xs">
 													{session.sessionId}
-												</TableCell>
-												<TableCell>{session.agent}</TableCell>
-												<TableCell className="max-w-[250px] truncate">
+												</p>
+												<p className="mt-1 truncate text-sm font-medium">
 													{session.model}
-												</TableCell>
-												<TableCell className="text-right">
-													{formatNumber(session.messageCount)}
-												</TableCell>
-												<TableCell className="text-right">
-													{formatTokens(session.totalTokens)}
-												</TableCell>
-												<TableCell className="text-right">
-													{PRECISE_CURRENCY.format(session.totalCost)}
-												</TableCell>
-												<TableCell className="text-right text-xs">
-													{formatDate(session.lastTimestamp)}
-												</TableCell>
-											</TableRow>
+												</p>
+												<p className="text-muted-foreground text-xs">
+													{maskName(session.agent)}
+												</p>
+												<div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+													<div>
+														<p className="text-muted-foreground">Messages</p>
+														<p className="font-semibold">
+															{formatNumber(session.messageCount)}
+														</p>
+													</div>
+													<div>
+														<p className="text-muted-foreground">Tokens</p>
+														<p className="font-semibold">
+															{formatTokens(session.totalTokens)}
+														</p>
+													</div>
+													<div>
+														<p className="text-muted-foreground">Cost</p>
+														<p className="font-semibold">
+															{CURRENCY.format(session.totalCost)}
+														</p>
+													</div>
+													<div>
+														<p className="text-muted-foreground">Last Active</p>
+														<p className="font-semibold">
+															{formatDate(session.lastTimestamp)}
+														</p>
+													</div>
+												</div>
+											</div>
 										))}
-									</TableBody>
-								</Table>
+									</div>
+									<div className="hidden md:block">
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead>Session</TableHead>
+													<TableHead>Agent</TableHead>
+													<TableHead>Model</TableHead>
+													<TableHead className="text-right">Messages</TableHead>
+													<TableHead className="text-right">Tokens</TableHead>
+													<TableHead className="text-right">Cost</TableHead>
+													<TableHead className="text-right">
+														Last Active
+													</TableHead>
+												</TableRow>
+											</TableHeader>
+											<TableBody>
+												{sessions.map((session) => (
+													<TableRow key={session.sessionId}>
+														<TableCell className="max-w-[150px] truncate font-mono text-xs">
+															{session.sessionId}
+														</TableCell>
+														<TableCell>{maskName(session.agent)}</TableCell>
+														<TableCell className="max-w-[250px] truncate">
+															{session.model}
+														</TableCell>
+														<TableCell className="text-right">
+															{formatNumber(session.messageCount)}
+														</TableCell>
+														<TableCell className="text-right">
+															{formatTokens(session.totalTokens)}
+														</TableCell>
+														<TableCell className="text-right">
+															{CURRENCY.format(session.totalCost)}
+														</TableCell>
+														<TableCell className="text-right text-xs">
+															{formatDate(session.lastTimestamp)}
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</div>
+								</>
 							)}
 						</CardContent>
 					</Card>
 				</section>
 
-				<footer className="mt-6 flex items-center justify-between px-1 pb-1 text-xs">
+				<footer className="mt-6 flex flex-col items-start gap-1 px-1 pb-1 text-xs sm:flex-row sm:items-center sm:justify-between">
 					<p className="text-muted-foreground">
 						Latest data: {mostRecentDate ?? "N/A"}
 					</p>

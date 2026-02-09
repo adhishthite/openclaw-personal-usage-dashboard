@@ -1,11 +1,10 @@
 export function formatCurrency(value: number): string {
-	if (value >= 1000) {
-		return `$${(value / 1000).toFixed(1)}k`;
-	}
-	if (value >= 1) {
-		return `$${value.toFixed(2)}`;
-	}
-	return `$${value.toFixed(4)}`;
+	return new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: "USD",
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	}).format(value);
 }
 
 export function formatTokens(value: number): string {
