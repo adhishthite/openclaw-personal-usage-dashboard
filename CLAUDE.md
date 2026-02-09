@@ -3,7 +3,7 @@
 Build a premium dark glassmorphism dashboard for tracking LLM API usage.
 
 ## READ FIRST
-- `RESEARCH.md` — full research report with architecture, schema, component picks, design tokens, file structure
+- `docs/RESEARCH.md` — full research report with architecture, schema, component picks, design tokens, file structure
 
 ## Stack (MANDATORY)
 - Next.js 15 (App Router) + TypeScript (strict)
@@ -18,7 +18,7 @@ Build a premium dark glassmorphism dashboard for tracking LLM API usage.
 ## Data Source
 The file `~/.openclaw/usage-ledger.jsonl` has ~3,900 records. Each line is JSON:
 ```json
-{"messageId":"abc","timestamp":"2026-02-07T22:30:06.260Z","agent":"kashyap","sessionId":"uuid","model":"claude-opus-4-6","provider":"azure-anthropic","role":"assistant","inputTokens":3,"outputTokens":111,"cacheRead":0,"cacheWrite":24412,"totalTokens":24526,"costInput":0.000045,"costOutput":0.008325,"costCacheRead":0,"costCacheWrite":0.457725,"costTotal":0.466095}
+{"messageId":"abc","timestamp":"2026-02-07T22:30:06.260Z","agent":"a***t","sessionId":"uuid","model":"claude-opus-4-6","provider":"azure-anthropic","role":"assistant","inputTokens":3,"outputTokens":111,"cacheRead":0,"cacheWrite":24412,"totalTokens":24526,"costInput":0.000045,"costOutput":0.008325,"costCacheRead":0,"costCacheWrite":0.457725,"costTotal":0.466095}
 ```
 
 ## What to Build
@@ -27,7 +27,7 @@ The file `~/.openclaw/usage-ledger.jsonl` has ~3,900 records. Each line is JSON:
 1. `bunx create-next-app@latest . --ts --tailwind --app --src-dir --import-alias "@/*"` (accept defaults)
 2. `bun add convex @tremor/react framer-motion lucide-react`
 3. `bun add -D @biomejs/biome` + init biome config
-4. Set up Convex: `bunx convex init` — use existing project `polished-cassowary-254`
+4. Set up Convex: `bunx convex init` — use your own Convex project
 5. Create Convex schema per RESEARCH.md (completions + dailyStats + ingestionState tables)
 6. Create mutations for batch inserting completions and upserting daily stats
 7. Create `scripts/ingest.ts` — reads JSONL, tracks offset via Convex ingestionState, batches 50 records per mutation

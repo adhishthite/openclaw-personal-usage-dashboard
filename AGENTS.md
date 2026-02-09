@@ -4,11 +4,11 @@ Agent playbook for this repository.
 
 ## Mission
 - Build and maintain the OpenClaw usage dashboard with a premium dark glassmorphism UI.
-- Keep work aligned with product requirements in `RESEARCH.md`.
+- Keep work aligned with product requirements in `docs/RESEARCH.md`.
 
 ## Read First
 - `CLAUDE.md` (project requirements and non-negotiable rules)
-- `RESEARCH.md` (architecture, schema, design tokens, and structure)
+- `docs/RESEARCH.md` (architecture, schema, design tokens, and structure)
 
 ## Required Stack
 - Next.js 15 (App Router) + TypeScript (strict)
@@ -33,4 +33,3 @@ Agent playbook for this repository.
 - Run: `bun run biome check --fix .`
 - Run: `bun run build`
 - Ensure changes are production-safe and consistent with existing patterns.
-
