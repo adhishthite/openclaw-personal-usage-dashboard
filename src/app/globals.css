@@ -1,0 +1,656 @@
+@import "tailwindcss";
+@source "../../node_modules/@tremor/react/dist/**/*.js";
+
+:root {
+	--glass-bg: rgba(255, 255, 255, 0.04);
+	--glass-bg-hover: rgba(255, 255, 255, 0.08);
+	--glass-bg-hero: rgba(255, 255, 255, 0.06);
+	--glass-bg-subtle: rgba(255, 255, 255, 0.02);
+	--glass-border: rgba(255, 255, 255, 0.08);
+	--glass-border-hover: rgba(255, 255, 255, 0.16);
+	--glass-border-top: rgba(255, 255, 255, 0.14);
+	--glass-blur: 20px;
+	--surface-0: #09090b;
+	--surface-1: #18181b;
+	--surface-2: #27272a;
+	--accent-primary: #818cf8;
+	--accent-secondary: #34d399;
+	--accent-warning: #fbbf24;
+	--accent-danger: #f87171;
+	--accent-sky: #38bdf8;
+	--accent-violet: #a78bfa;
+	--text-primary: #fafafa;
+	--text-secondary: #a1a1aa;
+	--text-tertiary: #71717a;
+
+	/* Tremor dark theme */
+	--tremor-brand: #818cf8;
+	--tremor-content: #fafafa;
+	--tremor-content-subtle: #a1a1aa;
+	--tremor-background: transparent;
+	--tremor-border: rgba(255, 255, 255, 0.08);
+}
+
+@theme inline {
+	--color-background: var(--surface-0);
+	--color-foreground: var(--text-primary);
+	--color-glass-bg: var(--glass-bg);
+	--color-glass-bg-hover: var(--glass-bg-hover);
+	--color-glass-border: var(--glass-border);
+	--color-surface-0: var(--surface-0);
+	--color-surface-1: var(--surface-1);
+	--color-surface-2: var(--surface-2);
+	--color-accent-primary: var(--accent-primary);
+	--color-accent-secondary: var(--accent-secondary);
+	--color-accent-warning: var(--accent-warning);
+	--color-accent-danger: var(--accent-danger);
+	--color-accent-sky: var(--accent-sky);
+	--color-accent-violet: var(--accent-violet);
+	--color-text-primary: var(--text-primary);
+	--color-text-secondary: var(--text-secondary);
+	--color-text-tertiary: var(--text-tertiary);
+	--font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+	--font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+body {
+	background: var(--surface-0);
+	color: var(--text-primary);
+	font-family:
+		var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+		Roboto, sans-serif;
+	min-height: 100vh;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Glass Card Base ─────────────────────────── */
+.glass-card {
+	background: linear-gradient(
+		160deg,
+		rgba(255, 255, 255, 0.06) 0%,
+		rgba(255, 255, 255, 0.02) 100%
+	);
+	backdrop-filter: blur(var(--glass-blur));
+	-webkit-backdrop-filter: blur(var(--glass-blur));
+	border: 1px solid var(--glass-border);
+	border-top: 1px solid var(--glass-border-top);
+	border-radius: 1rem;
+	position: relative;
+	overflow: hidden;
+	transition:
+		background 0.3s ease,
+		border-color 0.3s ease,
+		box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+	background: linear-gradient(
+		160deg,
+		rgba(255, 255, 255, 0.09) 0%,
+		rgba(255, 255, 255, 0.04) 100%
+	);
+	border-color: var(--glass-border-hover);
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.3),
+		0 0 0 1px rgba(255, 255, 255, 0.05),
+		inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Top glow line */
+.glass-card::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		rgba(255, 255, 255, 0.15) 25%,
+		rgba(255, 255, 255, 0.08) 75%,
+		transparent 100%
+	);
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* ─── Glass Card Hero (KPIs) ─────────────────── */
+.glass-card-hero {
+	background: linear-gradient(
+		160deg,
+		rgba(255, 255, 255, 0.08) 0%,
+		rgba(255, 255, 255, 0.03) 100%
+	);
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-top: 1px solid rgba(255, 255, 255, 0.18);
+	border-radius: 1rem;
+	position: relative;
+	overflow: hidden;
+	transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-hero:hover {
+	background: linear-gradient(
+		160deg,
+		rgba(255, 255, 255, 0.12) 0%,
+		rgba(255, 255, 255, 0.05) 100%
+	);
+	border-color: rgba(255, 255, 255, 0.2);
+	box-shadow:
+		0 12px 40px rgba(0, 0, 0, 0.35),
+		0 0 0 1px rgba(255, 255, 255, 0.08),
+		inset 0 1px 0 rgba(255, 255, 255, 0.12);
+	transform: translateY(-2px);
+}
+
+.glass-card-hero::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		rgba(255, 255, 255, 0.2) 20%,
+		rgba(255, 255, 255, 0.12) 80%,
+		transparent 100%
+	);
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* ─── Gradient Text Utility ─────────────────── */
+.gradient-text-indigo {
+	background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #6366f1 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.gradient-text-emerald {
+	background: linear-gradient(135deg, #6ee7b7 0%, #34d399 50%, #10b981 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.gradient-text-amber {
+	background: linear-gradient(135deg, #fde68a 0%, #fbbf24 50%, #f59e0b 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.gradient-text-red {
+	background: linear-gradient(135deg, #fca5a5 0%, #f87171 50%, #ef4444 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.gradient-text-violet {
+	background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #8b5cf6 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.gradient-text-cyan {
+	background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 50%, #06b6d4 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+/* ─── Noise Texture Overlay ──────────────────── */
+.noise-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	opacity: 0.03;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	background-repeat: repeat;
+	background-size: 256px 256px;
+}
+
+/* ─── Aurora Background Effect (Dual Layer) ──── */
+.aurora-bg {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.aurora-bg::before {
+	content: "";
+	position: absolute;
+	top: -50%;
+	left: -50%;
+	width: 200%;
+	height: 200%;
+	background:
+		radial-gradient(
+			ellipse at 20% 50%,
+			rgba(99, 102, 241, 0.15) 0%,
+			transparent 50%
+		),
+		radial-gradient(
+			ellipse at 80% 20%,
+			rgba(52, 211, 153, 0.1) 0%,
+			transparent 50%
+		),
+		radial-gradient(
+			ellipse at 40% 80%,
+			rgba(139, 92, 246, 0.12) 0%,
+			transparent 50%
+		);
+	animation: aurora-drift 20s ease-in-out infinite alternate;
+}
+
+.aurora-bg::after {
+	content: "";
+	position: absolute;
+	top: -30%;
+	left: -30%;
+	width: 160%;
+	height: 160%;
+	background:
+		radial-gradient(
+			ellipse at 70% 60%,
+			rgba(99, 102, 241, 0.08) 0%,
+			transparent 45%
+		),
+		radial-gradient(
+			ellipse at 30% 30%,
+			rgba(56, 189, 248, 0.06) 0%,
+			transparent 45%
+		);
+	animation: aurora-drift-alt 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes aurora-drift {
+	0% {
+		transform: translate(0%, 0%) rotate(0deg);
+	}
+	33% {
+		transform: translate(2%, -1%) rotate(1deg);
+	}
+	66% {
+		transform: translate(-1%, 2%) rotate(-1deg);
+	}
+	100% {
+		transform: translate(1%, -2%) rotate(0.5deg);
+	}
+}
+
+@keyframes aurora-drift-alt {
+	0% {
+		transform: translate(0%, 0%) rotate(0deg) scale(1);
+	}
+	50% {
+		transform: translate(-2%, 1%) rotate(-0.5deg) scale(1.05);
+	}
+	100% {
+		transform: translate(1%, -1%) rotate(0.5deg) scale(0.98);
+	}
+}
+
+/* ─── Skeleton Loading ───────────────────────── */
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+.skeleton-shimmer {
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0.03) 25%,
+		rgba(255, 255, 255, 0.08) 50%,
+		rgba(255, 255, 255, 0.03) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ─── Section Divider ────────────────────────── */
+.section-divider {
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		rgba(255, 255, 255, 0.06) 20%,
+		rgba(255, 255, 255, 0.06) 80%,
+		transparent 100%
+	);
+}
+
+/* ─── Tremor Dark Theme Overrides ────────────── */
+.tremor-content {
+	color: var(--text-primary) !important;
+}
+
+/* Axis text */
+.recharts-cartesian-axis-tick-value {
+	fill: #71717a !important;
+	font-size: 11px !important;
+	font-family: var(--font-inter), system-ui, sans-serif !important;
+}
+
+/* Grid lines - subtle */
+.recharts-cartesian-grid line {
+	stroke: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Tooltip dark glass */
+div[class*="tremor"][role="tooltip"],
+div[class*="Tooltip"] {
+	background: rgba(24, 24, 27, 0.95) !important;
+	backdrop-filter: blur(16px) !important;
+	border: 1px solid rgba(255, 255, 255, 0.12) !important;
+	border-radius: 0.75rem !important;
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.5),
+		0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Legend text */
+button[class*="tremor"] span {
+	color: var(--text-secondary) !important;
+	font-size: 12px !important;
+}
+
+/* BarList dark */
+div[class*="BarList"] p,
+div[class*="BarList"] span {
+	color: var(--text-secondary) !important;
+	font-size: 13px !important;
+}
+
+/* DonutChart center label */
+.recharts-text.recharts-label {
+	fill: var(--text-primary) !important;
+}
+
+/*
+ * Force bright colors on Tremor/Recharts chart elements.
+ * Tailwind v4 does not auto-generate fill/stroke for Tremor color names.
+ */
+
+/* --- Indigo --- */
+.fill-indigo-500,
+.dark\:fill-indigo-500 {
+	fill: #818cf8 !important;
+}
+.stroke-indigo-500,
+.dark\:stroke-indigo-500 {
+	stroke: #818cf8 !important;
+}
+.bg-indigo-500,
+.dark\:bg-indigo-500 {
+	background-color: #818cf8 !important;
+}
+.text-indigo-500,
+.dark\:text-indigo-500 {
+	color: #818cf8 !important;
+}
+
+/* --- Emerald --- */
+.fill-emerald-500,
+.dark\:fill-emerald-500 {
+	fill: #34d399 !important;
+}
+.stroke-emerald-500,
+.dark\:stroke-emerald-500 {
+	stroke: #34d399 !important;
+}
+.bg-emerald-500,
+.dark\:bg-emerald-500 {
+	background-color: #34d399 !important;
+}
+.text-emerald-500,
+.dark\:text-emerald-500 {
+	color: #34d399 !important;
+}
+
+/* --- Amber --- */
+.fill-amber-500,
+.dark\:fill-amber-500 {
+	fill: #fbbf24 !important;
+}
+.stroke-amber-500,
+.dark\:stroke-amber-500 {
+	stroke: #fbbf24 !important;
+}
+.bg-amber-500,
+.dark\:bg-amber-500 {
+	background-color: #fbbf24 !important;
+}
+.text-amber-500,
+.dark\:text-amber-500 {
+	color: #fbbf24 !important;
+}
+
+/* --- Red --- */
+.fill-red-500,
+.dark\:fill-red-500 {
+	fill: #f87171 !important;
+}
+.stroke-red-500,
+.dark\:stroke-red-500 {
+	stroke: #f87171 !important;
+}
+.bg-red-500,
+.dark\:bg-red-500 {
+	background-color: #f87171 !important;
+}
+.text-red-500,
+.dark\:text-red-500 {
+	color: #f87171 !important;
+}
+
+/* --- Violet --- */
+.fill-violet-500,
+.dark\:fill-violet-500 {
+	fill: #a78bfa !important;
+}
+.stroke-violet-500,
+.dark\:stroke-violet-500 {
+	stroke: #a78bfa !important;
+}
+.bg-violet-500,
+.dark\:bg-violet-500 {
+	background-color: #a78bfa !important;
+}
+.text-violet-500,
+.dark\:text-violet-500 {
+	color: #a78bfa !important;
+}
+
+/* --- Cyan/Sky --- */
+.fill-cyan-500,
+.dark\:fill-cyan-500 {
+	fill: #22d3ee !important;
+}
+.stroke-cyan-500,
+.dark\:stroke-cyan-500 {
+	stroke: #22d3ee !important;
+}
+.bg-cyan-500,
+.dark\:bg-cyan-500 {
+	background-color: #22d3ee !important;
+}
+.text-cyan-500,
+.dark\:text-cyan-500 {
+	color: #22d3ee !important;
+}
+.fill-sky-500,
+.dark\:fill-sky-500 {
+	fill: #38bdf8 !important;
+}
+.stroke-sky-500,
+.dark\:stroke-sky-500 {
+	stroke: #38bdf8 !important;
+}
+.bg-sky-500,
+.dark\:bg-sky-500 {
+	background-color: #38bdf8 !important;
+}
+.text-sky-500,
+.dark\:text-sky-500 {
+	color: #38bdf8 !important;
+}
+
+/* --- Yellow --- */
+.fill-yellow-500,
+.dark\:fill-yellow-500 {
+	fill: #fbbf24 !important;
+}
+.stroke-yellow-500,
+.dark\:stroke-yellow-500 {
+	stroke: #fbbf24 !important;
+}
+.bg-yellow-500,
+.dark\:bg-yellow-500 {
+	background-color: #fbbf24 !important;
+}
+.text-yellow-500,
+.dark\:text-yellow-500 {
+	color: #fbbf24 !important;
+}
+
+/* --- Blue --- */
+.fill-blue-500,
+.dark\:fill-blue-500 {
+	fill: #38bdf8 !important;
+}
+.stroke-blue-500,
+.dark\:stroke-blue-500 {
+	stroke: #38bdf8 !important;
+}
+.bg-blue-500,
+.dark\:bg-blue-500 {
+	background-color: #38bdf8 !important;
+}
+.text-blue-500,
+.dark\:text-blue-500 {
+	color: #38bdf8 !important;
+}
+
+/* --- Gray/Zinc --- */
+.fill-gray-500,
+.dark\:fill-gray-500 {
+	fill: #71717a !important;
+}
+.stroke-gray-500,
+.dark\:stroke-gray-500 {
+	stroke: #71717a !important;
+}
+.bg-gray-500,
+.dark\:bg-gray-500 {
+	background-color: #71717a !important;
+}
+.text-gray-500,
+.dark\:text-gray-500 {
+	color: #71717a !important;
+}
+.fill-zinc-500,
+.dark\:fill-zinc-500 {
+	fill: #71717a !important;
+}
+.stroke-zinc-500,
+.dark\:stroke-zinc-500 {
+	stroke: #71717a !important;
+}
+.bg-zinc-500,
+.dark\:bg-zinc-500 {
+	background-color: #71717a !important;
+}
+.text-zinc-500,
+.dark\:text-zinc-500 {
+	color: #71717a !important;
+}
+
+/* Legend dots visibility */
+button[class*="tremor"] > span:first-child,
+button[class*="Legend"] > span:first-child {
+	opacity: 1 !important;
+}
+
+/* Recharts area/line styling */
+.recharts-area .recharts-area-area {
+	fill-opacity: 0.35 !important;
+}
+.recharts-area .recharts-area-curve {
+	stroke-opacity: 1 !important;
+	stroke-width: 2.5 !important;
+}
+
+/* BarList backgrounds */
+div[class*="BarList"] div[class*="bg-"] {
+	opacity: 1 !important;
+}
+
+/* DonutChart sectors */
+.recharts-pie-sector path {
+	stroke: rgba(9, 9, 11, 0.8) !important;
+	stroke-width: 2 !important;
+}
+
+/* CategoryBar segments */
+div[class*="CategoryBar"] div[class*="bg-"] {
+	opacity: 1 !important;
+}
+
+/* ProgressCircle */
+svg[class*="ProgressCircle"] circle {
+	opacity: 1 !important;
+}
+
+/* Tracker blocks */
+div[class*="Tracker"] div[class*="bg-"] {
+	opacity: 1 !important;
+	min-height: 28px !important;
+}
+
+/* ─── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Reduced Motion ─────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+	.aurora-bg::before,
+	.aurora-bg::after {
+		animation: none;
+	}
+	.glass-card,
+	.glass-card-hero {
+		transition: none;
+	}
+}
