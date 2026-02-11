@@ -339,18 +339,6 @@ export function DashboardClient() {
 									{theme === "dark" ? "Light" : "Dark"}
 								</Button>
 							</div>
-							<div className="glass-strip rounded-xl border px-4 py-3">
-								<div className="mb-1 flex items-center justify-between text-xs">
-									<div className="text-muted-foreground flex items-center gap-1.5">
-										<span>Window spend pulse</span>
-										<InfoHint content="A quick spend intensity gauge for this selected date range. It compares current spend against a soft $50 reference target." />
-									</div>
-									<span className="font-semibold">
-										{formatPercent(spendRunway)}
-									</span>
-								</div>
-								<Progress value={spendRunway} />
-							</div>
 							<div className="rounded-xl border px-4 py-2.5 text-xs">
 								<div className="flex items-center justify-between">
 									<p className="text-muted-foreground">Sync Status</p>
