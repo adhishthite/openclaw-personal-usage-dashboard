@@ -65,6 +65,7 @@ import { api } from "../../convex/_generated/api";
 type RangeKey = "7d" | "30d" | "90d" | "all";
 
 const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; days?: number }> = [
+	{ key: "1d", label: "1D", days: 1 },
 	{ key: "7d", label: "7D", days: 7 },
 	{ key: "30d", label: "30D", days: 30 },
 	{ key: "90d", label: "90D", days: 90 },
