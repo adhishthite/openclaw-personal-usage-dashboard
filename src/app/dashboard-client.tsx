@@ -62,7 +62,7 @@ import {
 } from "@/lib/formatters";
 import { api } from "../../convex/_generated/api";
 
-type RangeKey = "7d" | "30d" | "90d" | "all";
+type RangeKey = "1d" | "7d" | "30d" | "90d" | "all";
 
 const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; days?: number }> = [
 	{ key: "1d", label: "1D", days: 1 },
