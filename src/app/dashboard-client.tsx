@@ -1,16 +1,17 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import {
 	Activity,
 	Bot,
 	CircleDollarSign,
 	CircleHelp,
+	Clock,
 	Cpu,
 	Database,
 	Gauge,
 	MessageSquare,
 	MoonStar,
+	RefreshCw,
 	Rocket,
 	ShieldCheck,
 	Sun,
@@ -60,6 +61,7 @@ import {
 	formatTokens,
 	maskName,
 } from "@/lib/formatters";
+import { bustAllCaches, getOldestCacheTimestamp, useCachedQuery } from "@/lib/use-cached-query";
 import { api } from "../../convex/_generated/api";
 
 type RangeKey = "1d" | "7d" | "30d" | "90d" | "all";
@@ -182,6 +184,41 @@ function DashboardSkeleton() {
 	);
 }
 
+function CacheFreshnessIndicator() {
+	const [now, setNow] = useState(Date.now());
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now()), 30_000);
+		return () => clearInterval(id);
+	}, []);
+	const oldest = getOldestCacheTimestamp();
+	const minutesAgo = oldest ? Math.floor((now - oldest) / 60_000) : null;
+	return (
+		<div className="flex items-center gap-2 text-xs text-muted-foreground">
+			<Clock className="h-3.5 w-3.5" />
+			<span>
+				{minutesAgo !== null
+					? minutesAgo < 1
+						? "Data: just now"
+						: `Data: ${minutesAgo}m ago`
+					: "Data: loading…"}
+			</span>
+			<Button
+				size="sm"
+				variant="ghost"
+				className="h-6 px-2"
+				onClick={() => {
+					bustAllCaches();
+					// Force re-render by navigating to same page
+					window.location.reload();
+				}}
+			>
+				<RefreshCw className="mr-1 h-3 w-3" />
+				Refresh
+			</Button>
+		</div>
+	);
+}
+
 export function DashboardClient() {
 	const [range, setRange] = useState<RangeKey>("30d");
 	const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -219,25 +256,25 @@ export function DashboardClient() {
 		};
 	}, [range]);
 
-	const overview = useQuery(api.queries.overview.getOverviewStats, rangeArgs);
-	const sessions = useQuery(api.queries.sessions.getRecentSessions, {
+	const overview = useCachedQuery(api.queries.overview.getOverviewStats, rangeArgs);
+	const sessions = useCachedQuery(api.queries.sessions.getRecentSessions, {
 		limit: 10,
 	});
-	const dailyCosts = useQuery(api.queries.timeseries.getDailyCosts, rangeArgs);
-	const tokenTimeseries = useQuery(
+	const dailyCosts = useCachedQuery(api.queries.timeseries.getDailyCosts, rangeArgs);
+	const tokenTimeseries = useCachedQuery(
 		api.queries.timeseries.getTokenTimeseries,
 		rangeArgs,
 	);
-	const messagesByDay = useQuery(
+	const messagesByDay = useCachedQuery(
 		api.queries.timeseries.getMessagesByDay,
 		rangeArgs,
 	);
-	const costByModel = useQuery(api.queries.models.getCostByModel, rangeArgs);
-	const modelComparison = useQuery(
+	const costByModel = useCachedQuery(api.queries.models.getCostByModel, rangeArgs);
+	const modelComparison = useCachedQuery(
 		api.queries.models.getModelComparison,
 		rangeArgs,
 	);
-	const cacheMetrics = useQuery(api.queries.models.getCacheMetrics, rangeArgs);
+	const cacheMetrics = useCachedQuery(api.queries.models.getCacheMetrics, rangeArgs);
 
 	const isLoading =
 		overview === undefined ||
@@ -896,9 +933,12 @@ export function DashboardClient() {
 				</section>
 
 				<footer className="mt-6 flex flex-col items-start gap-1 px-1 pb-1 text-xs sm:flex-row sm:items-center sm:justify-between">
-					<p className="text-muted-foreground">
-						Latest data: {mostRecentDate ?? "N/A"}
-					</p>
+					<div className="flex items-center gap-4">
+						<p className="text-muted-foreground">
+							Latest data: {mostRecentDate ?? "N/A"}
+						</p>
+						<CacheFreshnessIndicator />
+					</div>
 					<p className="text-muted-foreground">
 						Range: {RANGE_OPTIONS.find((option) => option.key === range)?.label}
 					</p>
