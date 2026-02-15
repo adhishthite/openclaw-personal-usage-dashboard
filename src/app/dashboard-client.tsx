@@ -454,7 +454,7 @@ export function DashboardClient() {
 								</Badge>
 								<Badge variant="outline" className="live-badge gap-1">
 									<Activity className="h-3 w-3" />
-									Redis-Cached Feed
+									Cached Feed
 								</Badge>
 							</div>
 							<h1 className="font-heading text-3xl leading-none tracking-tight sm:text-4xl md:text-5xl">
