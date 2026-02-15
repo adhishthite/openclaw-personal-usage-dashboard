@@ -90,7 +90,9 @@ export function useCachedQuery<Query extends FunctionReference<"query">>(
     return () => { listeners.delete(handler); };
   }, []);
 
-  const queryName = (query as unknown as { _name?: string })?.toString?.() ?? String(query);
+  const queryName = typeof query === "object" && query !== null
+    ? ((query as Record<string, unknown>)._name as string | undefined) ?? JSON.stringify(query)
+    : String(query);
   const argsObj = args === "skip" ? null : (args as Record<string, unknown>);
   const cacheKey = argsObj !== null ? getCacheKey(queryName, argsObj) : null;
 
