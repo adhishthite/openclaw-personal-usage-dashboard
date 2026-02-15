@@ -114,11 +114,14 @@ function buildQueryString(params: Record<string, unknown>): string {
 	return sp.toString();
 }
 
-function useApiQuery<T>(slug: string, params: Record<string, unknown>, refreshKey = 0): { data: T | undefined; error: string | null } {
+function useApiQuery<T>(
+	slug: string,
+	params: Record<string, unknown>,
+	refreshKey = 0,
+): { data: T | undefined; error: string | null } {
 	const [data, setData] = useState<T | undefined>(undefined);
 	const [error, setError] = useState<string | null>(null);
 	const qs = useMemo(() => buildQueryString(params), [params]);
-	const stableParams = `${slug}?${qs}`;
 
 	useEffect(() => {
 		let cancelled = false;
@@ -142,7 +145,7 @@ function useApiQuery<T>(slug: string, params: Record<string, unknown>, refreshKe
 		return () => {
 			cancelled = true;
 		};
-	}, [stableParams, refreshKey, slug, qs]);
+	}, [refreshKey, slug, qs]);
 
 	return { data, error };
 }
@@ -150,10 +153,7 @@ function useApiQuery<T>(slug: string, params: Record<string, unknown>, refreshKe
 /** Bust all 9 API caches by calling each with ?bust=true */
 async function bustAllApiCaches(rangeArgs: Record<string, unknown>) {
 	const promises = ALL_SLUGS.map((slug) => {
-		const params =
-			slug === "sessions"
-				? { limit: "10" }
-				: rangeArgs;
+		const params = slug === "sessions" ? { limit: "10" } : rangeArgs;
 		const qs = buildQueryString(params);
 		return fetch(`/api/stats/${slug}?${qs}&bust=true`).catch(() => {});
 	});
@@ -342,11 +342,9 @@ export function DashboardClient() {
 			lastTimestamp: string;
 		}>
 	>("sessions", { limit: 10 }, refreshCounter);
-	const { data: dailyCosts, error: dailyCostsError } = useApiQuery<Array<{ date: string; Cost: number }>>(
-		"daily-costs",
-		rangeArgs,
-		refreshCounter,
-	);
+	const { data: dailyCosts, error: dailyCostsError } = useApiQuery<
+		Array<{ date: string; Cost: number }>
+	>("daily-costs", rangeArgs, refreshCounter);
 	const { data: tokenTimeseries, error: tokenTimeseriesError } = useApiQuery<
 		Array<{
 			date: string;
@@ -356,16 +354,12 @@ export function DashboardClient() {
 			"Cache Write": number;
 		}>
 	>("token-timeseries", rangeArgs, refreshCounter);
-	const { data: messagesByDay, error: messagesByDayError } = useApiQuery<Array<{ date: string; Messages: number }>>(
-		"messages-by-day",
-		rangeArgs,
-		refreshCounter,
-	);
-	const { data: costByModel, error: costByModelError } = useApiQuery<Array<{ name: string; value: number }>>(
-		"cost-by-model",
-		rangeArgs,
-		refreshCounter,
-	);
+	const { data: messagesByDay, error: messagesByDayError } = useApiQuery<
+		Array<{ date: string; Messages: number }>
+	>("messages-by-day", rangeArgs, refreshCounter);
+	const { data: costByModel, error: costByModelError } = useApiQuery<
+		Array<{ name: string; value: number }>
+	>("cost-by-model", rangeArgs, refreshCounter);
 	const { data: modelComparison, error: modelComparisonError } = useApiQuery<
 		Array<{
 			model: string;
@@ -379,11 +373,29 @@ export function DashboardClient() {
 		hitRate: number;
 		totalCacheRead: number;
 		totalCacheWrite: number;
-		byModel: Array<{ name: string; "Cache Read": number; "Cache Write": number }>;
+		byModel: Array<{
+			name: string;
+			"Cache Read": number;
+			"Cache Write": number;
+		}>;
 	}>("cache-metrics", rangeArgs, refreshCounter);
-	const { data: sessionCount, error: sessionCountError } = useApiQuery<number>("session-count", rangeArgs, refreshCounter);
+	const { data: sessionCount, error: sessionCountError } = useApiQuery<number>(
+		"session-count",
+		rangeArgs,
+		refreshCounter,
+	);
 
-	const hasAnyError = !!(overviewError || sessionsError || dailyCostsError || tokenTimeseriesError || messagesByDayError || costByModelError || modelComparisonError || cacheMetricsError || sessionCountError);
+	const hasAnyError = !!(
+		overviewError ||
+		sessionsError ||
+		dailyCostsError ||
+		tokenTimeseriesError ||
+		messagesByDayError ||
+		costByModelError ||
+		modelComparisonError ||
+		cacheMetricsError ||
+		sessionCountError
+	);
 
 	// Track when data arrives
 	useEffect(() => {

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { ConvexHttpClient } from "convex/browser";
 import { Redis } from "@upstash/redis";
+import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 
 const BATCH_SIZE = 50;
@@ -270,7 +270,11 @@ async function main() {
 		const CACHE_TTL = 3600;
 
 		const today = new Date().toISOString().slice(0, 10);
-		const dateRanges: Array<{ label: string; startDate?: string; endDate?: string }> = [
+		const dateRanges: Array<{
+			label: string;
+			startDate?: string;
+			endDate?: string;
+		}> = [
 			{ label: "7d", startDate: isoDateIngest(6), endDate: today },
 			{ label: "30d", startDate: isoDateIngest(29), endDate: today },
 			{ label: "all" },
@@ -280,17 +284,64 @@ async function main() {
 			slug: string;
 			// biome-ignore lint/suspicious/noExplicitAny: dynamic query
 			query: any;
-			buildParams: (range: { startDate?: string; endDate?: string }) => Record<string, unknown>;
+			buildParams: (range: {
+				startDate?: string;
+				endDate?: string;
+			}) => Record<string, unknown>;
 		}> = [
-			{ slug: "overview", query: api.queries.overview.getOverviewStats, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "sessions", query: api.queries.sessions.getRecentSessions, buildParams: () => ({ limit: 10 }) },
-			{ slug: "session-count", query: api.queries.sessions.getSessionCount, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "daily-costs", query: api.queries.timeseries.getDailyCosts, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "token-timeseries", query: api.queries.timeseries.getTokenTimeseries, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "messages-by-day", query: api.queries.timeseries.getMessagesByDay, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "cost-by-model", query: api.queries.models.getCostByModel, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "model-comparison", query: api.queries.models.getModelComparison, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
-			{ slug: "cache-metrics", query: api.queries.models.getCacheMetrics, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{
+				slug: "overview",
+				query: api.queries.overview.getOverviewStats,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "sessions",
+				query: api.queries.sessions.getRecentSessions,
+				buildParams: () => ({ limit: 10 }),
+			},
+			{
+				slug: "session-count",
+				query: api.queries.sessions.getSessionCount,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "daily-costs",
+				query: api.queries.timeseries.getDailyCosts,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "token-timeseries",
+				query: api.queries.timeseries.getTokenTimeseries,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "messages-by-day",
+				query: api.queries.timeseries.getMessagesByDay,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "cost-by-model",
+				query: api.queries.models.getCostByModel,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "model-comparison",
+				query: api.queries.models.getModelComparison,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
+			{
+				slug: "cache-metrics",
+				query: api.queries.models.getCacheMetrics,
+				buildParams: (r) =>
+					r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {},
+			},
 		];
 
 		for (const range of dateRanges) {

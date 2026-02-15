@@ -1,7 +1,6 @@
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from "next/font/google";
-import { ConvexClientProvider } from "@/lib/convex";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -83,7 +82,7 @@ export default function RootLayout({
 			<body
 				className={`${plexSans.variable} ${plexCondensed.variable} antialiased`}
 			>
-				<ConvexClientProvider>{children}</ConvexClientProvider>
+				{children}
 				<Analytics />
 			</body>
 		</html>
