@@ -17,7 +17,7 @@ import {
 	Sun,
 	TrendingUp,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	Area,
 	AreaChart,
@@ -61,12 +61,6 @@ import {
 	formatTokens,
 	maskName,
 } from "@/lib/formatters";
-import {
-	bustAllCaches,
-	getOldestCacheTimestamp,
-	useCachedQuery,
-} from "@/lib/use-cached-query";
-import { api } from "../../convex/_generated/api";
 
 type RangeKey = "1d" | "7d" | "30d" | "90d" | "all";
 
@@ -94,10 +88,66 @@ const CURRENCY = new Intl.NumberFormat("en-US", {
 	maximumFractionDigits: 2,
 });
 
+const ALL_SLUGS = [
+	"overview",
+	"sessions",
+	"session-count",
+	"daily-costs",
+	"token-timeseries",
+	"messages-by-day",
+	"cost-by-model",
+	"model-comparison",
+	"cache-metrics",
+] as const;
+
 function isoDate(daysAgo = 0) {
 	const date = new Date();
 	date.setDate(date.getDate() - daysAgo);
 	return date.toISOString().slice(0, 10);
+}
+
+function buildQueryString(params: Record<string, unknown>): string {
+	const sp = new URLSearchParams();
+	for (const [k, v] of Object.entries(params)) {
+		if (v !== undefined && v !== null) sp.set(k, String(v));
+	}
+	return sp.toString();
+}
+
+function useApiQuery<T>(slug: string, params: Record<string, unknown>, refreshKey = 0): T | undefined {
+	const [data, setData] = useState<T | undefined>(undefined);
+	const qs = useMemo(() => buildQueryString(params), [params]);
+	const stableParams = `${slug}?${qs}`;
+
+	useEffect(() => {
+		let cancelled = false;
+		setData(undefined);
+		const bustParam = refreshKey > 0 ? "&bust=true" : "";
+		fetch(`/api/stats/${slug}?${qs}${bustParam}`)
+			.then((r) => r.json())
+			.then((d) => {
+				if (!cancelled) setData(d as T);
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [stableParams, refreshKey, slug, qs]);
+
+	return data;
+}
+
+/** Bust all 9 API caches by calling each with ?bust=true */
+async function bustAllApiCaches(rangeArgs: Record<string, unknown>) {
+	const promises = ALL_SLUGS.map((slug) => {
+		const params =
+			slug === "sessions"
+				? { limit: "10" }
+				: rangeArgs;
+		const qs = buildQueryString(params);
+		return fetch(`/api/stats/${slug}?${qs}&bust=true`).catch(() => {});
+	});
+	await Promise.all(promises);
 }
 
 function MetricCard({
@@ -188,14 +238,21 @@ function DashboardSkeleton() {
 	);
 }
 
-function CacheFreshnessIndicator() {
+function CacheFreshnessIndicator({
+	onRefresh,
+	lastFetchedAt,
+}: {
+	onRefresh: () => void;
+	lastFetchedAt: number | null;
+}) {
 	const [now, setNow] = useState(Date.now());
 	useEffect(() => {
 		const id = setInterval(() => setNow(Date.now()), 30_000);
 		return () => clearInterval(id);
 	}, []);
-	const oldest = getOldestCacheTimestamp();
-	const minutesAgo = oldest ? Math.floor((now - oldest) / 60_000) : null;
+	const minutesAgo = lastFetchedAt
+		? Math.floor((now - lastFetchedAt) / 60_000)
+		: null;
 	return (
 		<div className="flex items-center gap-2 text-xs text-muted-foreground">
 			<Clock className="h-3.5 w-3.5" />
@@ -210,10 +267,7 @@ function CacheFreshnessIndicator() {
 				size="sm"
 				variant="ghost"
 				className="h-6 px-2"
-				onClick={() => {
-					bustAllCaches();
-					setNow(Date.now());
-				}}
+				onClick={onRefresh}
 			>
 				<RefreshCw className="mr-1 h-3 w-3" />
 				Refresh
@@ -225,6 +279,8 @@ function CacheFreshnessIndicator() {
 export function DashboardClient() {
 	const [range, setRange] = useState<RangeKey>("30d");
 	const [theme, setTheme] = useState<"light" | "dark">("light");
+	const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
+	const [refreshCounter, setRefreshCounter] = useState(0);
 
 	useEffect(() => {
 		const stored =
@@ -259,41 +315,75 @@ export function DashboardClient() {
 		};
 	}, [range]);
 
-	const overview = useCachedQuery(
-		api.queries.overview.getOverviewStats,
+	const overview = useApiQuery<{
+		totalCost: number;
+		totalTokens: number;
+		totalMessages: number;
+		modelsUsed: number;
+	}>("overview", rangeArgs, refreshCounter);
+	const sessions = useApiQuery<
+		Array<{
+			sessionId: string;
+			agent: string;
+			model: string;
+			messageCount: number;
+			totalTokens: number;
+			totalCost: number;
+			lastTimestamp: string;
+		}>
+	>("sessions", { limit: 10 }, refreshCounter);
+	const dailyCosts = useApiQuery<Array<{ date: string; Cost: number }>>(
+		"daily-costs",
 		rangeArgs,
+		refreshCounter,
 	);
-	const sessions = useCachedQuery(api.queries.sessions.getRecentSessions, {
-		limit: 10,
-	});
-	const dailyCosts = useCachedQuery(
-		api.queries.timeseries.getDailyCosts,
+	const tokenTimeseries = useApiQuery<
+		Array<{
+			date: string;
+			"Input Tokens": number;
+			"Output Tokens": number;
+			"Cache Read": number;
+			"Cache Write": number;
+		}>
+	>("token-timeseries", rangeArgs, refreshCounter);
+	const messagesByDay = useApiQuery<Array<{ date: string; Messages: number }>>(
+		"messages-by-day",
 		rangeArgs,
+		refreshCounter,
 	);
-	const tokenTimeseries = useCachedQuery(
-		api.queries.timeseries.getTokenTimeseries,
+	const costByModel = useApiQuery<Array<{ name: string; value: number }>>(
+		"cost-by-model",
 		rangeArgs,
+		refreshCounter,
 	);
-	const messagesByDay = useCachedQuery(
-		api.queries.timeseries.getMessagesByDay,
-		rangeArgs,
-	);
-	const costByModel = useCachedQuery(
-		api.queries.models.getCostByModel,
-		rangeArgs,
-	);
-	const modelComparison = useCachedQuery(
-		api.queries.models.getModelComparison,
-		rangeArgs,
-	);
-	const cacheMetrics = useCachedQuery(
-		api.queries.models.getCacheMetrics,
-		rangeArgs,
-	);
-	const sessionCount = useCachedQuery(
-		api.queries.sessions.getSessionCount,
-		rangeArgs,
-	);
+	const modelComparison = useApiQuery<
+		Array<{
+			model: string;
+			"Total Cost": number;
+			"Avg Cost/Message": number;
+			"Total Tokens": number;
+			Messages: number;
+		}>
+	>("model-comparison", rangeArgs, refreshCounter);
+	const cacheMetrics = useApiQuery<{
+		hitRate: number;
+		totalCacheRead: number;
+		totalCacheWrite: number;
+		byModel: Array<{ name: string; "Cache Read": number; "Cache Write": number }>;
+	}>("cache-metrics", rangeArgs, refreshCounter);
+	const sessionCount = useApiQuery<number>("session-count", rangeArgs, refreshCounter);
+
+	// Track when data arrives
+	useEffect(() => {
+		if (overview !== undefined) {
+			setLastFetchedAt(Date.now());
+		}
+	}, [overview]);
+
+	const handleRefresh = useCallback(async () => {
+		await bustAllApiCaches(rangeArgs);
+		setRefreshCounter((c) => c + 1);
+	}, [rangeArgs]);
 
 	const isLoading =
 		overview === undefined ||
@@ -352,7 +442,7 @@ export function DashboardClient() {
 								</Badge>
 								<Badge variant="outline" className="live-badge gap-1">
 									<Activity className="h-3 w-3" />
-									Realtime Convex Feed
+									Redis-Cached Feed
 								</Badge>
 							</div>
 							<h1 className="font-heading text-3xl leading-none tracking-tight sm:text-4xl md:text-5xl">
@@ -953,7 +1043,10 @@ export function DashboardClient() {
 						<p className="text-muted-foreground">
 							Latest data: {mostRecentDate ?? "N/A"}
 						</p>
-						<CacheFreshnessIndicator />
+						<CacheFreshnessIndicator
+							onRefresh={handleRefresh}
+							lastFetchedAt={lastFetchedAt}
+						/>
 					</div>
 					<p className="text-muted-foreground">
 						Range: {RANGE_OPTIONS.find((option) => option.key === range)?.label}
