@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ConvexHttpClient } from "convex/browser";
+import { Redis } from "@upstash/redis";
 import { api } from "../convex/_generated/api";
 
 const BATCH_SIZE = 50;
@@ -259,6 +260,64 @@ async function main() {
 	console.log(
 		`Total records ingested: ${(state?.totalIngested ?? 0) + records.length}`,
 	);
+
+	// Pre-warm Redis cache
+	const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+	const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+	if (redisUrl && redisToken) {
+		console.log("Pre-warming Redis cache...");
+		const redis = new Redis({ url: redisUrl, token: redisToken });
+		const CACHE_TTL = 3600;
+
+		const today = new Date().toISOString().slice(0, 10);
+		const dateRanges: Array<{ label: string; startDate?: string; endDate?: string }> = [
+			{ label: "7d", startDate: isoDateIngest(6), endDate: today },
+			{ label: "30d", startDate: isoDateIngest(29), endDate: today },
+			{ label: "all" },
+		];
+
+		const slugQueries: Array<{
+			slug: string;
+			// biome-ignore lint/suspicious/noExplicitAny: dynamic query
+			query: any;
+			buildParams: (range: { startDate?: string; endDate?: string }) => Record<string, unknown>;
+		}> = [
+			{ slug: "overview", query: api.queries.overview.getOverviewStats, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "sessions", query: api.queries.sessions.getRecentSessions, buildParams: () => ({ limit: 10 }) },
+			{ slug: "session-count", query: api.queries.sessions.getSessionCount, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "daily-costs", query: api.queries.timeseries.getDailyCosts, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "token-timeseries", query: api.queries.timeseries.getTokenTimeseries, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "messages-by-day", query: api.queries.timeseries.getMessagesByDay, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "cost-by-model", query: api.queries.models.getCostByModel, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "model-comparison", query: api.queries.models.getModelComparison, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+			{ slug: "cache-metrics", query: api.queries.models.getCacheMetrics, buildParams: (r) => r.startDate ? { startDate: r.startDate, endDate: r.endDate } : {} },
+		];
+
+		for (const range of dateRanges) {
+			for (const sq of slugQueries) {
+				// Sessions don't vary by date range, only warm once
+				if (sq.slug === "sessions" && range.label !== "7d") continue;
+				const params = sq.buildParams(range);
+				const cacheKey = `dash:${sq.slug}:${JSON.stringify(params)}`;
+				try {
+					const data = await client.query(sq.query, params);
+					await redis.set(cacheKey, data, { ex: CACHE_TTL });
+				} catch (err) {
+					console.warn(`Failed to warm ${sq.slug} (${range.label}):`, err);
+				}
+			}
+			console.log(`Warmed cache for range: ${range.label}`);
+		}
+		console.log("Redis cache pre-warming complete!");
+	} else {
+		console.log("Skipping Redis pre-warm (no credentials found).");
+	}
+}
+
+function isoDateIngest(daysAgo: number): string {
+	const d = new Date();
+	d.setDate(d.getDate() - daysAgo);
+	return d.toISOString().slice(0, 10);
 }
 
 main().catch(console.error);
