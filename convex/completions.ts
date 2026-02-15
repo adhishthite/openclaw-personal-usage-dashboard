@@ -27,9 +27,19 @@ export const batchInsert = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
+		let skipped = 0;
 		for (const record of args.records) {
+			const existing = await ctx.db
+				.query("completions")
+				.withIndex("by_messageId", (q) => q.eq("messageId", record.messageId))
+				.first();
+			if (existing) {
+				skipped++;
+				continue;
+			}
 			await ctx.db.insert("completions", record);
 		}
+		return { inserted: args.records.length - skipped, skipped };
 	},
 });
 

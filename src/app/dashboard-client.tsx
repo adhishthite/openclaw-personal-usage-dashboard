@@ -212,8 +212,7 @@ function CacheFreshnessIndicator() {
 				className="h-6 px-2"
 				onClick={() => {
 					bustAllCaches();
-					// Force re-render by navigating to same page
-					window.location.reload();
+					setNow(Date.now());
 				}}
 			>
 				<RefreshCw className="mr-1 h-3 w-3" />
@@ -321,10 +320,6 @@ export function DashboardClient() {
 			? overview.totalTokens / overview.totalMessages
 			: 0;
 	const mostRecentDate = dailyCosts.at(-1)?.date;
-	const spendRunway = Math.max(
-		0,
-		Math.min(100, (overview.totalCost / 50) * 100),
-	);
 	const latestSessionAt = sessions[0]?.lastTimestamp
 		? new Date(sessions[0].lastTimestamp)
 		: null;
