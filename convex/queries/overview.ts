@@ -7,15 +7,19 @@ export const getOverviewStats = query({
 		endDate: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		let stats = await ctx.db.query("dailyStats").collect();
 		const { startDate, endDate } = args;
-
-		if (startDate) {
-			stats = stats.filter((s) => s.date >= startDate);
-		}
-		if (endDate) {
-			stats = stats.filter((s) => s.date <= endDate);
-		}
+		const q = ctx.db.query("dailyStats");
+		const indexed =
+			startDate && endDate
+				? q.withIndex("by_date", (r) =>
+						r.gte("date", startDate).lte("date", endDate),
+					)
+				: startDate
+					? q.withIndex("by_date", (r) => r.gte("date", startDate))
+					: endDate
+						? q.withIndex("by_date", (r) => r.lte("date", endDate))
+						: q.withIndex("by_date");
+		const stats = await indexed.collect();
 
 		const totalCost = stats.reduce((sum, s) => sum + s.totalCost, 0);
 		const totalTokens = stats.reduce((sum, s) => sum + s.totalTokens, 0);
@@ -32,7 +36,6 @@ export const getOverviewStats = query({
 				: 0;
 
 		const models = new Set(stats.map((s) => s.model));
-		// Approximate session count from daily stats
 		const sessionCount = stats.reduce((sum, s) => sum + s.sessionCount, 0);
 
 		return {

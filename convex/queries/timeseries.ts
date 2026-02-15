@@ -7,15 +7,19 @@ export const getTokenTimeseries = query({
 		endDate: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		let stats = await ctx.db.query("dailyStats").withIndex("by_date").collect();
 		const { startDate, endDate } = args;
-
-		if (startDate) {
-			stats = stats.filter((s) => s.date >= startDate);
-		}
-		if (endDate) {
-			stats = stats.filter((s) => s.date <= endDate);
-		}
+		const q = ctx.db.query("dailyStats");
+		const indexed =
+			startDate && endDate
+				? q.withIndex("by_date", (r) =>
+						r.gte("date", startDate).lte("date", endDate),
+					)
+				: startDate
+					? q.withIndex("by_date", (r) => r.gte("date", startDate))
+					: endDate
+						? q.withIndex("by_date", (r) => r.lte("date", endDate))
+						: q.withIndex("by_date");
+		const stats = await indexed.collect();
 
 		const grouped = new Map<
 			string,
@@ -54,15 +58,19 @@ export const getDailyCosts = query({
 		endDate: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		let stats = await ctx.db.query("dailyStats").withIndex("by_date").collect();
 		const { startDate, endDate } = args;
-
-		if (startDate) {
-			stats = stats.filter((s) => s.date >= startDate);
-		}
-		if (endDate) {
-			stats = stats.filter((s) => s.date <= endDate);
-		}
+		const q = ctx.db.query("dailyStats");
+		const indexed =
+			startDate && endDate
+				? q.withIndex("by_date", (r) =>
+						r.gte("date", startDate).lte("date", endDate),
+					)
+				: startDate
+					? q.withIndex("by_date", (r) => r.gte("date", startDate))
+					: endDate
+						? q.withIndex("by_date", (r) => r.lte("date", endDate))
+						: q.withIndex("by_date");
+		const stats = await indexed.collect();
 
 		const grouped = new Map<string, number>();
 
@@ -86,15 +94,19 @@ export const getMessagesByDay = query({
 		endDate: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		let stats = await ctx.db.query("dailyStats").withIndex("by_date").collect();
 		const { startDate, endDate } = args;
-
-		if (startDate) {
-			stats = stats.filter((s) => s.date >= startDate);
-		}
-		if (endDate) {
-			stats = stats.filter((s) => s.date <= endDate);
-		}
+		const q = ctx.db.query("dailyStats");
+		const indexed =
+			startDate && endDate
+				? q.withIndex("by_date", (r) =>
+						r.gte("date", startDate).lte("date", endDate),
+					)
+				: startDate
+					? q.withIndex("by_date", (r) => r.gte("date", startDate))
+					: endDate
+						? q.withIndex("by_date", (r) => r.lte("date", endDate))
+						: q.withIndex("by_date");
+		const stats = await indexed.collect();
 
 		const grouped = new Map<string, number>();
 

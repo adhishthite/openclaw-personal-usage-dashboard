@@ -43,7 +43,7 @@ async function main() {
 	console.log(`Total lines in file: ${lines.length}`);
 
 	// Get current ingestion state
-	const state = await client.mutation(api.completions.getIngestionState);
+	const state = await client.query(api.completions.getIngestionState);
 	const startLine = state?.lastProcessedLine ?? 0;
 	console.log(`Last processed line: ${startLine}`);
 

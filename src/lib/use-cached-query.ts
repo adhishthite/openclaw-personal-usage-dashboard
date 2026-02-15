@@ -1,7 +1,11 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { type FunctionReference, type FunctionArgs, type FunctionReturnType } from "convex/server";
+import type {
+	FunctionArgs,
+	FunctionReference,
+	FunctionReturnType,
+} from "convex/server";
 import { useEffect, useRef, useState } from "react";
 
 const CACHE_TTL_MS = 3_600_000; // 1 hour
@@ -136,8 +140,11 @@ export function useCachedQuery<Query extends FunctionReference<"query">>(
 	const cacheKey = argsObj !== null ? getCacheKey(queryName, argsObj) : null;
 
 	// Read cache
-	const cached = cacheKey ? readCache<FunctionReturnType<Query>>(cacheKey) : null;
-	const isFresh = cached !== null && Date.now() - cached.timestamp < CACHE_TTL_MS;
+	const cached = cacheKey
+		? readCache<FunctionReturnType<Query>>(cacheKey)
+		: null;
+	const isFresh =
+		cached !== null && Date.now() - cached.timestamp < CACHE_TTL_MS;
 
 	// Always subscribe to Convex (no skip trick — it's unreliable)
 	const convexResult = useQuery(query, args);

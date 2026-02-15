@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 export const batchInsert = mutation({
 	args: {
@@ -75,7 +75,7 @@ export const upsertDailyStats = mutation({
 					totalCacheRead: existing.totalCacheRead + stat.totalCacheRead,
 					totalCacheWrite: existing.totalCacheWrite + stat.totalCacheWrite,
 					messageCount: existing.messageCount + stat.messageCount,
-					sessionCount: stat.sessionCount,
+					sessionCount: existing.sessionCount + stat.sessionCount,
 				});
 			} else {
 				await ctx.db.insert("dailyStats", stat);
@@ -100,25 +100,27 @@ export const updateIngestionState = mutation({
 	},
 });
 
-export const getIngestionState = mutation({
+export const getIngestionState = query({
 	handler: async (ctx) => {
 		return await ctx.db.query("ingestionState").first();
 	},
 });
 
-export const clearAll = mutation({
-	handler: async (ctx) => {
-		const completions = await ctx.db.query("completions").collect();
-		for (const c of completions) {
-			await ctx.db.delete(c._id);
+export const clearBatch = mutation({
+	args: {
+		table: v.union(
+			v.literal("completions"),
+			v.literal("dailyStats"),
+			v.literal("ingestionState"),
+		),
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const batchSize = args.limit ?? 500;
+		const rows = await ctx.db.query(args.table).take(batchSize);
+		for (const row of rows) {
+			await ctx.db.delete(row._id);
 		}
-		const stats = await ctx.db.query("dailyStats").collect();
-		for (const s of stats) {
-			await ctx.db.delete(s._id);
-		}
-		const states = await ctx.db.query("ingestionState").collect();
-		for (const s of states) {
-			await ctx.db.delete(s._id);
-		}
+		return { deleted: rows.length, done: rows.length < batchSize };
 	},
 });

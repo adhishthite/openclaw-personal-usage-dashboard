@@ -61,7 +61,11 @@ import {
 	formatTokens,
 	maskName,
 } from "@/lib/formatters";
-import { bustAllCaches, getOldestCacheTimestamp, useCachedQuery } from "@/lib/use-cached-query";
+import {
+	bustAllCaches,
+	getOldestCacheTimestamp,
+	useCachedQuery,
+} from "@/lib/use-cached-query";
 import { api } from "../../convex/_generated/api";
 
 type RangeKey = "1d" | "7d" | "30d" | "90d" | "all";
@@ -256,11 +260,17 @@ export function DashboardClient() {
 		};
 	}, [range]);
 
-	const overview = useCachedQuery(api.queries.overview.getOverviewStats, rangeArgs);
+	const overview = useCachedQuery(
+		api.queries.overview.getOverviewStats,
+		rangeArgs,
+	);
 	const sessions = useCachedQuery(api.queries.sessions.getRecentSessions, {
 		limit: 10,
 	});
-	const dailyCosts = useCachedQuery(api.queries.timeseries.getDailyCosts, rangeArgs);
+	const dailyCosts = useCachedQuery(
+		api.queries.timeseries.getDailyCosts,
+		rangeArgs,
+	);
 	const tokenTimeseries = useCachedQuery(
 		api.queries.timeseries.getTokenTimeseries,
 		rangeArgs,
@@ -269,12 +279,18 @@ export function DashboardClient() {
 		api.queries.timeseries.getMessagesByDay,
 		rangeArgs,
 	);
-	const costByModel = useCachedQuery(api.queries.models.getCostByModel, rangeArgs);
+	const costByModel = useCachedQuery(
+		api.queries.models.getCostByModel,
+		rangeArgs,
+	);
 	const modelComparison = useCachedQuery(
 		api.queries.models.getModelComparison,
 		rangeArgs,
 	);
-	const cacheMetrics = useCachedQuery(api.queries.models.getCacheMetrics, rangeArgs);
+	const cacheMetrics = useCachedQuery(
+		api.queries.models.getCacheMetrics,
+		rangeArgs,
+	);
 
 	const isLoading =
 		overview === undefined ||
