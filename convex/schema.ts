@@ -45,6 +45,24 @@ export default defineSchema({
 		.index("by_date", ["date"])
 		.index("by_date_model", ["date", "model"]),
 
+	sessions: defineTable({
+		sessionId: v.string(),
+		agent: v.string(),
+		models: v.array(v.string()),
+		providers: v.array(v.string()),
+		totalCost: v.float64(),
+		totalTokens: v.number(),
+		totalInputTokens: v.number(),
+		totalOutputTokens: v.number(),
+		totalCacheRead: v.number(),
+		totalCacheWrite: v.number(),
+		messageCount: v.number(),
+		firstTimestamp: v.string(),
+		lastTimestamp: v.string(),
+	})
+		.index("by_sessionId", ["sessionId"])
+		.index("by_lastTimestamp", ["lastTimestamp"]),
+
 	ingestionState: defineTable({
 		lastProcessedLine: v.number(),
 		lastProcessedTimestamp: v.string(),

@@ -94,6 +94,69 @@ export const upsertDailyStats = mutation({
 	},
 });
 
+export const upsertSessions = mutation({
+	args: {
+		sessions: v.array(
+			v.object({
+				sessionId: v.string(),
+				agent: v.string(),
+				models: v.array(v.string()),
+				providers: v.array(v.string()),
+				totalCost: v.float64(),
+				totalTokens: v.number(),
+				totalInputTokens: v.number(),
+				totalOutputTokens: v.number(),
+				totalCacheRead: v.number(),
+				totalCacheWrite: v.number(),
+				messageCount: v.number(),
+				firstTimestamp: v.string(),
+				lastTimestamp: v.string(),
+			}),
+		),
+	},
+	handler: async (ctx, args) => {
+		for (const session of args.sessions) {
+			const existing = await ctx.db
+				.query("sessions")
+				.withIndex("by_sessionId", (q) => q.eq("sessionId", session.sessionId))
+				.first();
+
+			if (existing) {
+				// Merge models and providers (union of arrays)
+				const mergedModels = [
+					...new Set([...existing.models, ...session.models]),
+				];
+				const mergedProviders = [
+					...new Set([...existing.providers, ...session.providers]),
+				];
+				await ctx.db.patch(existing._id, {
+					models: mergedModels,
+					providers: mergedProviders,
+					totalCost: existing.totalCost + session.totalCost,
+					totalTokens: existing.totalTokens + session.totalTokens,
+					totalInputTokens:
+						existing.totalInputTokens + session.totalInputTokens,
+					totalOutputTokens:
+						existing.totalOutputTokens + session.totalOutputTokens,
+					totalCacheRead: existing.totalCacheRead + session.totalCacheRead,
+					totalCacheWrite: existing.totalCacheWrite + session.totalCacheWrite,
+					messageCount: existing.messageCount + session.messageCount,
+					firstTimestamp:
+						session.firstTimestamp < existing.firstTimestamp
+							? session.firstTimestamp
+							: existing.firstTimestamp,
+					lastTimestamp:
+						session.lastTimestamp > existing.lastTimestamp
+							? session.lastTimestamp
+							: existing.lastTimestamp,
+				});
+			} else {
+				await ctx.db.insert("sessions", session);
+			}
+		}
+	},
+});
+
 export const updateIngestionState = mutation({
 	args: {
 		lastProcessedLine: v.number(),
@@ -121,6 +184,7 @@ export const clearBatch = mutation({
 		table: v.union(
 			v.literal("completions"),
 			v.literal("dailyStats"),
+			v.literal("sessions"),
 			v.literal("ingestionState"),
 		),
 		limit: v.optional(v.number()),

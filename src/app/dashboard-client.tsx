@@ -290,6 +290,10 @@ export function DashboardClient() {
 		api.queries.models.getCacheMetrics,
 		rangeArgs,
 	);
+	const sessionCount = useCachedQuery(
+		api.queries.sessions.getSessionCount,
+		rangeArgs,
+	);
 
 	const isLoading =
 		overview === undefined ||
@@ -299,7 +303,8 @@ export function DashboardClient() {
 		messagesByDay === undefined ||
 		costByModel === undefined ||
 		modelComparison === undefined ||
-		cacheMetrics === undefined;
+		cacheMetrics === undefined ||
+		sessionCount === undefined;
 
 	if (isLoading) {
 		return (
@@ -444,7 +449,7 @@ export function DashboardClient() {
 					<MetricCard
 						label="Models Used"
 						value={formatNumber(overview.modelsUsed)}
-						description={`Across ${formatNumber(overview.sessionCount)} sessions`}
+						description={`Across ${formatNumber(sessionCount)} sessions`}
 						hint="How many distinct models appeared in the selected period."
 						icon={Cpu}
 					/>

@@ -163,6 +163,90 @@ async function main() {
 		);
 	}
 
+	// Compute session aggregates from new records
+	const sessionMap = new Map<
+		string,
+		{
+			sessionId: string;
+			agent: string;
+			models: Set<string>;
+			providers: Set<string>;
+			totalCost: number;
+			totalTokens: number;
+			totalInputTokens: number;
+			totalOutputTokens: number;
+			totalCacheRead: number;
+			totalCacheWrite: number;
+			messageCount: number;
+			firstTimestamp: string;
+			lastTimestamp: string;
+		}
+	>();
+
+	for (const r of records) {
+		const existing = sessionMap.get(r.sessionId);
+		if (existing) {
+			existing.models.add(r.model);
+			existing.providers.add(r.provider);
+			existing.totalCost += r.costTotal;
+			existing.totalTokens += r.totalTokens;
+			existing.totalInputTokens += r.inputTokens;
+			existing.totalOutputTokens += r.outputTokens;
+			existing.totalCacheRead += r.cacheRead;
+			existing.totalCacheWrite += r.cacheWrite;
+			existing.messageCount += 1;
+			if (r.timestampISO < existing.firstTimestamp) {
+				existing.firstTimestamp = r.timestampISO;
+			}
+			if (r.timestampISO > existing.lastTimestamp) {
+				existing.lastTimestamp = r.timestampISO;
+			}
+		} else {
+			sessionMap.set(r.sessionId, {
+				sessionId: r.sessionId,
+				agent: r.agent,
+				models: new Set([r.model]),
+				providers: new Set([r.provider]),
+				totalCost: r.costTotal,
+				totalTokens: r.totalTokens,
+				totalInputTokens: r.inputTokens,
+				totalOutputTokens: r.outputTokens,
+				totalCacheRead: r.cacheRead,
+				totalCacheWrite: r.cacheWrite,
+				messageCount: 1,
+				firstTimestamp: r.timestampISO,
+				lastTimestamp: r.timestampISO,
+			});
+		}
+	}
+
+	const sessionStats = Array.from(sessionMap.values()).map((s) => ({
+		sessionId: s.sessionId,
+		agent: s.agent,
+		models: [...s.models],
+		providers: [...s.providers],
+		totalCost: s.totalCost,
+		totalTokens: s.totalTokens,
+		totalInputTokens: s.totalInputTokens,
+		totalOutputTokens: s.totalOutputTokens,
+		totalCacheRead: s.totalCacheRead,
+		totalCacheWrite: s.totalCacheWrite,
+		messageCount: s.messageCount,
+		firstTimestamp: s.firstTimestamp,
+		lastTimestamp: s.lastTimestamp,
+	}));
+
+	// Batch upsert sessions
+	for (let i = 0; i < sessionStats.length; i += BATCH_SIZE) {
+		const batch = sessionStats.slice(i, i + BATCH_SIZE);
+		await client.mutation(api.completions.upsertSessions, {
+			sessions: batch,
+		});
+		console.log(
+			`Upserted sessions ${Math.min(i + BATCH_SIZE, sessionStats.length)}/${sessionStats.length}`,
+		);
+	}
+
 	// Update ingestion state
 	const lastRecord = records[records.length - 1];
 	await client.mutation(api.completions.updateIngestionState, {
