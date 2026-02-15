@@ -125,7 +125,6 @@ function useApiQuery<T>(
 
 	useEffect(() => {
 		let cancelled = false;
-		setData(undefined);
 		setError(null);
 		const bustParam = refreshKey > 0 ? "&bust=true" : "";
 		fetch(`/api/stats/${slug}?${qs}${bustParam}`)
