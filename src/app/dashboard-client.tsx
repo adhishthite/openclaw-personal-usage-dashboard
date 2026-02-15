@@ -114,27 +114,37 @@ function buildQueryString(params: Record<string, unknown>): string {
 	return sp.toString();
 }
 
-function useApiQuery<T>(slug: string, params: Record<string, unknown>, refreshKey = 0): T | undefined {
+function useApiQuery<T>(slug: string, params: Record<string, unknown>, refreshKey = 0): { data: T | undefined; error: string | null } {
 	const [data, setData] = useState<T | undefined>(undefined);
+	const [error, setError] = useState<string | null>(null);
 	const qs = useMemo(() => buildQueryString(params), [params]);
 	const stableParams = `${slug}?${qs}`;
 
 	useEffect(() => {
 		let cancelled = false;
 		setData(undefined);
+		setError(null);
 		const bustParam = refreshKey > 0 ? "&bust=true" : "";
 		fetch(`/api/stats/${slug}?${qs}${bustParam}`)
-			.then((r) => r.json())
-			.then((d) => {
-				if (!cancelled) setData(d as T);
+			.then((r) => {
+				if (!r.ok) throw new Error(`API error: ${r.status}`);
+				return r.json();
 			})
-			.catch(() => {});
+			.then((d) => {
+				if (!cancelled) {
+					setData(d as T);
+					setError(null);
+				}
+			})
+			.catch((err) => {
+				if (!cancelled) setError(err.message ?? "Fetch failed");
+			});
 		return () => {
 			cancelled = true;
 		};
 	}, [stableParams, refreshKey, slug, qs]);
 
-	return data;
+	return { data, error };
 }
 
 /** Bust all 9 API caches by calling each with ?bust=true */
@@ -315,13 +325,13 @@ export function DashboardClient() {
 		};
 	}, [range]);
 
-	const overview = useApiQuery<{
+	const { data: overview, error: overviewError } = useApiQuery<{
 		totalCost: number;
 		totalTokens: number;
 		totalMessages: number;
 		modelsUsed: number;
 	}>("overview", rangeArgs, refreshCounter);
-	const sessions = useApiQuery<
+	const { data: sessions, error: sessionsError } = useApiQuery<
 		Array<{
 			sessionId: string;
 			agent: string;
@@ -332,12 +342,12 @@ export function DashboardClient() {
 			lastTimestamp: string;
 		}>
 	>("sessions", { limit: 10 }, refreshCounter);
-	const dailyCosts = useApiQuery<Array<{ date: string; Cost: number }>>(
+	const { data: dailyCosts, error: dailyCostsError } = useApiQuery<Array<{ date: string; Cost: number }>>(
 		"daily-costs",
 		rangeArgs,
 		refreshCounter,
 	);
-	const tokenTimeseries = useApiQuery<
+	const { data: tokenTimeseries, error: tokenTimeseriesError } = useApiQuery<
 		Array<{
 			date: string;
 			"Input Tokens": number;
@@ -346,17 +356,17 @@ export function DashboardClient() {
 			"Cache Write": number;
 		}>
 	>("token-timeseries", rangeArgs, refreshCounter);
-	const messagesByDay = useApiQuery<Array<{ date: string; Messages: number }>>(
+	const { data: messagesByDay, error: messagesByDayError } = useApiQuery<Array<{ date: string; Messages: number }>>(
 		"messages-by-day",
 		rangeArgs,
 		refreshCounter,
 	);
-	const costByModel = useApiQuery<Array<{ name: string; value: number }>>(
+	const { data: costByModel, error: costByModelError } = useApiQuery<Array<{ name: string; value: number }>>(
 		"cost-by-model",
 		rangeArgs,
 		refreshCounter,
 	);
-	const modelComparison = useApiQuery<
+	const { data: modelComparison, error: modelComparisonError } = useApiQuery<
 		Array<{
 			model: string;
 			"Total Cost": number;
@@ -365,13 +375,15 @@ export function DashboardClient() {
 			Messages: number;
 		}>
 	>("model-comparison", rangeArgs, refreshCounter);
-	const cacheMetrics = useApiQuery<{
+	const { data: cacheMetrics, error: cacheMetricsError } = useApiQuery<{
 		hitRate: number;
 		totalCacheRead: number;
 		totalCacheWrite: number;
 		byModel: Array<{ name: string; "Cache Read": number; "Cache Write": number }>;
 	}>("cache-metrics", rangeArgs, refreshCounter);
-	const sessionCount = useApiQuery<number>("session-count", rangeArgs, refreshCounter);
+	const { data: sessionCount, error: sessionCountError } = useApiQuery<number>("session-count", rangeArgs, refreshCounter);
+
+	const hasAnyError = !!(overviewError || sessionsError || dailyCostsError || tokenTimeseriesError || messagesByDayError || costByModelError || modelComparisonError || cacheMetricsError || sessionCountError);
 
 	// Track when data arrives
 	useEffect(() => {
@@ -513,6 +525,12 @@ export function DashboardClient() {
 						</div>
 					</div>
 				</header>
+
+				{hasAnyError && (
+					<div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+						<p>Some data failed to load. Try refreshing.</p>
+					</div>
+				)}
 
 				<section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
 					<MetricCard
